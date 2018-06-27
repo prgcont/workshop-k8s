@@ -1,0 +1,21 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: gordon
+spec:
+  rules:
+  # this ingress maps the gordon.example.com domain name to our service
+  # you have to add example.com into DNS
+  # or you can just add it to /etc/hosts for testing purposes
+  - host: gordon.example.com
+    http:
+      paths:
+      # all requests will be sent to port 80 of the gordon-nodeport service
+      - path: /v1
+        backend:
+          serviceName: gordon-service-v1
+          servicePort: 80
+      - path: /v2
+        backend:
+          serviceName: gordon-service-v2
+          servicePort: 90
