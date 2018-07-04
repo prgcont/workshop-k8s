@@ -1,9 +1,13 @@
 # Kubernetes 101
 
-! IMPORTANT - All source code is [here]()
+! IMPORTANT - All source code is [here](https://github.com/prgcont/workshop-k8s/tree/master/src/ingress)
 
 Topics:
-- Setup minikube
+- [Setup minikube](#setup-minikube)
+  - [Install Hypervisor](#install-hypervisor)
+  - [Install Kubectl](#install-kubectl)
+  - [Install Minikube](#install-minikube)
+  - [Run Minikube](#run-minikube)
 - Deploying your first application
   - Deploy pod
   - Deploy service
@@ -24,6 +28,35 @@ Topics:
 - Persistent storage
   - Define PV to Kubernetes (NFS)
   - Create PVC and assign it to PODS
+
+## Setup Minikube
+
+! IMPORTANT ! VT-x or AMD-v virtualization must be enabled in your computer’s BIOS.
+
+### Install Hypervisor
+If you do not already have a hypervisor installed, install one now.
+ - For OS X, install `VirtualBox` or `VMware Fusion`, or `HyperKit`.
+ - For Linux, install `VirtualBox` or `KVM`.
+ - For Windows, install `VirtualBox` or `Hyper-V`.
+
+Note: Minikube also supports a --vm-driver=none option that runs the Kubernetes components on the host and not in a VM. Docker is required to use this driver but a hypervisor is not required.
+
+### Install Kubectl
+Install kubectl according to [this instructions](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+
+### Install Minikube
+Install Minikube according to the instructions for the [release 0.28.0](https://github.com/kubernetes/minikube/releases/tag/v0.28.0)
+
+### Run Minikube
+If you want to change the VM driver add the appropriate `--vm-driver=xxx` flag to `minikube start`.
+
+```
+$ minikube start
+Starting local Kubernetes cluster...
+Running pre-create checks...
+Creating machine...
+Starting local Kubernetes cluster...
+```
 
 ## Ingress controller
 *Ingress - the action or fact of going in or entering; the capacity or right of the entrance. Synonyms: entry, entrance, access, means of entry, admittance, admission;*
