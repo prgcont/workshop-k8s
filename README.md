@@ -9,9 +9,8 @@ Topics:
   - [Install Minikube](#install-minikube)
   - [Run Minikube](#run-minikube)
 - Deploying your first application
-  - Deploy pod
-  - Deploy service
-  - Scale rc
+  - [What just happened?](#what-just-happened)
+  - [Scaling your application](#scaling-your-application)
 - Accessing your application
   - [Ingress controller](#ingress-controller)
     - [Ingress Controller is Needed](#ingress-controller-is-needed)
@@ -57,6 +56,112 @@ Running pre-create checks...
 Creating machine...
 Starting local Kubernetes cluster...
 ```
+
+## Deploying your first application
+
+You can just deploy our application into your cluster as easily as running following command:
+```
+$  kubectl run hello --image=evalle/gordon:v1.0 --port=8080 --expose
+```
+
+## What just happened?
+
+We asked Kubernetes to deploy our previously build application and we hinted it, that it will be listening on port 8080 and we wanted it to be exposed to a cluster enabling
+load balancing to work.
+
+## How can I access my app?
+
+To access your app we will hook inside Kubernetes network via `kubectl proxy` command, so please open a new terminal and run
+
+```
+$  kubectl proxy
+```
+
+Than you can access your application via following command:
+```
+curl http://localhost:8001/api/v1/namespaces/default/services/hello/proxy/
+```
+
+### Service
+Did you noted a world `service` inside the url? Yes, we are using kubernetes service to access our application. You can see how the service object looks by running:
+```
+$  kubectl describe service hello
+```
+
+Or you can list all other service by:
+```
+$  kubectl get services
+```
+
+Why service is there? The service is very important object in Kubernetes. Its an abstraction for your deployed applications. It helps you to discover your services, to load balance them and
+many other scenarios. You can learn more in upstream [doc](https://kubernetes.io/docs/concepts/services-networking/service/).
+
+
+### Pod
+As you already know a group of containers running in a Kubernetes cluster is called `Pod`. So lets look which pods are running in our Kubernetes cluster by executing:
+
+```
+$  kubectl get pods
+
+```
+
+You can see how the Pod is defined by executing (replace ... by Pod name from previous output):
+
+```
+$ kubectl describe pod ...
+```
+
+you can even access Pod directly via `curl` by:
+
+```
+$  export POD_NAME=$(kubectl get pods | grep hello | cut -f 1 -d ' ' | head -n 1)
+$  curl http://localhost:8001/api/v1/namespaces/default/pods/$PODNAME/proxy/
+```
+
+
+## Scaling your application
+As we deployed our application via `kubectl run` command, it was created using `deployment` object, we can view it via:
+
+```
+$  kubectl describe deployment hello
+```
+
+Examine whole output, you can see a Pod template with our container image, and most important part for us a line with a word `Replicas`. This tells
+Kubernetes how many instances of our application we want to have. We can scale our deployment by executing
+
+```
+$  kubectl scale --replicas=3 deployment/hello
+```
+
+This will ask our Deployment to scale our application to 3 instances. The number of instances is guarded by ReplicaSet. You can list and describe ReplicaSets by following commands
+(replace ... by name of your ReplicaSet):
+
+```
+kubect get rs
+kubect describe rs/...
+```
+*note:* You can still find people using Replication Controllers instead of Replica Set which is outdated approach and you should avoid it as both object works almost same with ReplicaSets enabling you
+to use more advance [labels/selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) mechanisms.
+
+
+
+When we list pods again we should see 3 of them:
+
+```
+$  kubectl get pods
+```
+
+And we can test, that all of the pods are being used by `curl` the service url (remember service is providing load balancing of pods) via:
+
+```
+$  for i in $(seq 1 50); do curl http://localhost:8001/api/v1/namespaces/default/services/hello/proxy/; done
+```
+
+### Tasks
+
+1. How can service find its targeted pods?
+2. Run `minkube dasboard` and find all the objects we described using the Kuberenetes Dashboard
+
 
 ## Ingress controller
 *Ingress - the action or fact of going in or entering; the capacity or right of the entrance. Synonyms: entry, entrance, access, means of entry, admittance, admission;*
@@ -410,6 +515,7 @@ Save it as `app-v1.js` and let's create a Dockerfile for it:
 ```
 FROM node:10.5-slim
 ADD app-v1.js /app-v1.js
+EXPOSE 8080
 ENTRYPOINT ["node", "app-v1.js"]
 ```
 now build it:
