@@ -1,6 +1,9 @@
 # Kubernetes 101
 
-! IMPORTANT - All source code is [here](https://github.com/prgcont/workshop-k8s/tree/master/src/ingress)
+The purpose of this workshop series is to get you on boarded to Kuberentes experience. We will guide you through deploying first applications,
+scaling them and accessing them from outside network via Ingress routing. We will also briefly touch data persistence which will help you to run 
+simple state full applications.
+
 
 Topics:
 - [Setup minikube](#setup-minikube)
@@ -55,11 +58,48 @@ Starting local Kubernetes cluster...
 Running pre-create checks...
 Creating machine...
 Starting local Kubernetes cluster...
+
 ```
+### Prepare Demo application
+We're going to use a simple NodeJS application. The image is pushed to a DockerHub already (evalle/gordon:v1.0) but you should never-ever download and run unknown images from DockerHub, so let's build it instead.
+
+Here is the app:
+```
+const http = require('http');
+const os = require('os');
+
+console.log("Gordon server starting...");
+
+var handler = function(request, response) {
+  console.log("Received request from " + request.connection.remoteAddress);
+  response.writeHead(200);
+  response.end("You've hit gordon v1, my name is " + os.hostname() + "\n");
+};
+
+var www = http.createServer(handler);
+www.listen(8080);
+```
+If you're not familiar with NodeJS, this app basically answers with greetings and hostname to any request to port 8080.
+
+Save it as `app-v1.js` and let's create a Dockerfile for it:
+```
+FROM node:10.5-slim
+ADD app-v1.js /app-v1.js
+EXPOSE 8080
+ENTRYPOINT ["node", "app-v1.js"]
+```
+now build it:
+```
+$ docker build -t <your_name>/gordon:v1.0
+```
+And push it either to DockerHub or to your favorite Docker registry.
+
+! IMPORTANT - All source code is [here](https://github.com/prgcont/workshop-k8s/tree/master/src/ingress)
+
 
 ## Deploying your first application
 
-You can just deploy our application into your cluster as easily as running following command:
+No as we have minikube and our application ready, we can deploy our application into minikube as easily as running following command:
 ```
 $  kubectl run hello --image=evalle/gordon:v1.0 --port=8080 --expose
 ```
@@ -76,6 +116,7 @@ To access your app we will hook inside Kubernetes network via `kubectl proxy` co
 ```
 $  kubectl proxy
 ```
+! IMPORTANT - Do not stop proxy as following commands will not work.
 
 Than you can access your application via following command:
 ```
@@ -83,18 +124,32 @@ curl http://localhost:8001/api/v1/namespaces/default/services/hello/proxy/
 ```
 
 ### Service
-Did you noted a world `service` inside the url? Yes, we are using kubernetes service to access our application. You can see how the service object looks by running:
+Did you note a world `service` inside the url? Yes, we are using kubernetes service to access our application. You can see how the service object looks by running:
 ```
 $  kubectl describe service hello
 ```
 
-Or you can list all other service by:
+Or you can list all other services by:
 ```
 $  kubectl get services
 ```
 
-Why service is there? The service is very important object in Kubernetes. Its an abstraction for your deployed applications. It helps you to discover your services, to load balance them and
-many other scenarios. You can learn more in upstream [doc](https://kubernetes.io/docs/concepts/services-networking/service/).
+Why service is there? The service is very important object in Kubernetes. Its an abstraction for your deployed applications. It helps you to discover your pods, to load balance them and
+many other scenarios. You can learn more in upstream [doc](https://kubernetes.io/docs/concepts/services-networking/service/). You can imagine it in a following way:
+
+```
+
+    +-------+
+    |service|
+    +-------+
+        |
+  +-----+-----+
+  |     |     |	
++---+ +---+ +---+
+|pod| |pod| |pod|
++---+ +---+ +---+
+
+```
 
 
 ### Pod
@@ -491,38 +546,6 @@ Conceptually, our setup should look like this:
    --|--|--|--
      [pods]
 ```
-We're going to use a simple NodeJS application for testing. I've pushed image to DockerHub already (evalle/gordon:v1.0) but you should never-ever download and run unknown images from DockerHub, so let's build them instead.
-
-Here is the app:
-```
-const http = require('http');
-const os = require('os');
-
-console.log("Gordon server starting...");
-
-var handler = function(request, response) {
-  console.log("Received request from " + request.connection.remoteAddress);
-  response.writeHead(200);
-  response.end("You've hit gordon v1, my name is " + os.hostname() + "\n");
-};
-
-var www = http.createServer(handler);
-www.listen(8080);
-```
-If you're not familiar with NodeJS, this app basically answers with greetings and hostname to any request to port 8080.
-
-Save it as `app-v1.js` and let's create a Dockerfile for it:
-```
-FROM node:10.5-slim
-ADD app-v1.js /app-v1.js
-EXPOSE 8080
-ENTRYPOINT ["node", "app-v1.js"]
-```
-now build it:
-```
-$ docker build -t <your_name>/gordon:v1.0
-```
-And push it either to DockerHub or to your favorite Docker registry.
 
 ### RC and Service
 Now let's create a ReplicationController and a service: they will be used by Ingress:
