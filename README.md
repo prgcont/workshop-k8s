@@ -1,7 +1,7 @@
 # Kubernetes 101
 
 The purpose of this workshop series is to get you on boarded to Kuberentes experience. We will guide you through deploying first applications,
-scaling them and accessing them from outside network via Ingress routing. We will also briefly touch data persistence which will help you to run 
+scaling them and accessing them from outside network via Ingress routing. We will also briefly touch data persistence which will help you to run
 simple statefull applications.
 
 
@@ -11,15 +11,21 @@ Topics:
   - [Install Kubectl](#install-kubectl)
   - [Install Minikube](#install-minikube)
   - [Run Minikube](#run-minikube)
-- [Deploying your first application](#deploying-your-first-application)
-  - [What just happened?](#what-just-happened)
-  - [Scaling your application](#scaling-your-application)
+- [Prepare Demo Application](#prepare-demo-application)
+- [Deploy Your First Application](#deploy-your-first-application)
+  - [What Just Happened?](#what-just-happened)
+- [How Can I Access My App?](#how-can-i-access-my-app)
+- [Service](#service)
+- [Pod](#pod)
+- [Scaling Your Application](#scaling-your-application)
 - [Persistent storage](#persistent-storage)
-- [Ingress controller](#ingress-controller)
+  - [Claiming Persistent Volumes](#claiming-persistent-volumes)
+  - [Injecting PVC into Your Application](#injecting-pvc-into-your-application)
+- [Ingress Controller](#ingress-controller)
   - [Ingress Controller is Needed](#ingress-controller-is-needed)
   - [Why Nginx?](#why-nginx)
   - [Defaultbackend](#defaultbackend)
-  - [Nginx-Ingress & defaultbackend](#nginx-ingress-and-defaultbackend)
+  - [Nginx-Ingress & Defaultbackend](#nginx-ingress-and-defaultbackend)
   - [Simple Application](#simple-application)
   - [RC and Service](#rc-and-service)
   - [Multiple Services](#multiple-services)
@@ -37,10 +43,10 @@ If you do not already have a hypervisor installed, install one now.
  - For Linux, install `VirtualBox` or `KVM`.
  - For Windows, install `VirtualBox` or `Hyper-V`.
 
-Note: Minikube also supports a --vm-driver=none option that runs the Kubernetes components on the host and not in a VM. Docker is required to use this driver but a hypervisor is not required.
+Note: Minikube also supports a `--vm-driver=none` option that runs the Kubernetes components on the host and not in a VM. Docker is required to use this driver but a hypervisor is not required.
 
 ### Install Kubectl
-Install kubectl according to [this instructions](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+Install kubectl according to [these instructions](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 
 ### Install Minikube
 Install Minikube according to the instructions for the [release 0.28.0](https://github.com/kubernetes/minikube/releases/tag/v0.28.0)
@@ -56,8 +62,8 @@ Creating machine...
 Starting local Kubernetes cluster...
 
 ```
-### Prepare Demo application
-We're going to use a simple NodeJS application. The image is pushed to a DockerHub already (`prgcont/gordon:v1.0`) but you should never-ever download and run unknown images from DockerHub, so let's build it instead.
+## Prepare Demo Application
+We're going to use a simple NodeJS application. The image is already pushed to DockerHub (`prgcont/gordon:v1.0`) but you should never-ever download and run unknown images from DockerHub, so let's build it instead.
 
 Here is the app:
 ```
@@ -75,7 +81,7 @@ var handler = function(request, response) {
 var www = http.createServer(handler);
 www.listen(8080);
 ```
-If you're not familiar with NodeJS, this app basically answers with greetings and hostname to any request to port 8080.
+If you're not familiar with NodeJS, this app basically answers with greetings and hostname to any request to port `8080`.
 
 Save it as `app-v1.js` and let's create a Dockerfile for it:
 ```
@@ -94,19 +100,19 @@ And push it either to DockerHub or to your favorite Docker registry.
 ! IMPORTANT - All source code is [here](https://github.com/prgcont/workshop-k8s/tree/master/src/ingress)
 
 
-## Deploying your first application
+## Deploy Your First Application
 
 No as we have minikube and our application ready, we can deploy our application into minikube as easily as running following command:
 ```
 $  kubectl run hello --image=${REGISTRY_USER}/gordon:v1.0 --port=8080 --expose
 ```
 
-## What just happened?
+### What Just Happened?
 
 We asked Kubernetes to deploy our previously build application and we hinted it, that it will be listening on port 8080 and we wanted it to be exposed to a cluster enabling
 load balancing to work.
 
-## How can I access my app?
+## How Can I Access My App?
 
 To access your app we will hook inside Kubernetes network via `kubectl proxy` command, so please open a new terminal and run
 
@@ -120,7 +126,7 @@ Than you can access your application via following command:
 curl http://localhost:8001/api/v1/namespaces/default/services/hello/proxy/
 ```
 
-### Service
+## Service
 Did you note a world `service` inside the url? Yes, we are using kubernetes service to access our application. You can see how the service object looks by running:
 ```
 $  kubectl describe service hello
@@ -141,15 +147,14 @@ many other scenarios. You can learn more in upstream [doc](https://kubernetes.io
     +-------+
         |
   +-----|-----+
-  |     |     |	
+  |     |     |
 +---+ +---+ +---+
 |pod| |pod| |pod|
 +---+ +---+ +---+
 
 ```
 
-
-### Pod
+## Pod
 As you already know a group of containers running in a Kubernetes cluster is called `Pod`. So lets look which pods are running in our Kubernetes cluster by executing:
 
 ```
@@ -171,7 +176,7 @@ $  curl -L http://localhost:8001/api/v1/namespaces/default/pods/$PODNAME/proxy/
 ```
 
 
-## Scaling your application
+## Scaling Your Application
 As we deployed our application via `kubectl run` command, it was created using `deployment` object, we can view it via:
 
 ```
@@ -214,14 +219,14 @@ $  for i in $(seq 1 50); do curl http://localhost:8001/api/v1/namespaces/default
 2. Run `minikube dashboard` and find all the objects we described using the Kubernetes Dashboard
 
 
-## Persistent storage
+## Persistent Storage
 
 In this chapter we will look how we can add a persistent storage to our applications. This topic is very important as a lot of outstanding
 application needs some storage access. We can argue, that we should not need any persistent storage and just consume API. But in real world
 you will face a need of providing file-system like storage for your pods. Persistent volumes are ussually network filesystems. You can see
 a list of supported providers at upstream [docs](https://kubernetes.io/docs/concepts/storage/volumes/#types-of-volumes)
 
-### Claiming persistent volumes
+### Claiming Persistent Volumes
 
 Minikube comes with auto-provisioned persistent volumes, they are created as you ask for them. Any application which needs a persistent volume
 must claim it. You can do it, by creating Persistent Volume Claim by executing following command:
@@ -248,7 +253,7 @@ $  kubectl get pvc
 $  kubectl describe pvc testpvc
 ```
 
-### Injecting PVC into your application.
+### Injecting PVC into Your Application.
 
 To inject our Persistent volume claim into our application we need to edit its "deployment" object by executing:
 
@@ -312,17 +317,17 @@ and you should see test_file on every pod.
 
 ### Tasks
 1. Scale your application to 0 replicas and run it again and show that data still persist
-2. Scale your application to 0 pod and recreate pvc, will data exist? 
+2. Scale your application to 0 pod and recreate pvc, will data exist?
 3. Explain why its different outcome for first two tasks. You can look at PVC [lifecycle](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#lifecycle-of-a-volume-and-claim)
 
-## Ingress controller
+## Ingress Controller
 *Ingress - the action or fact of going in or entering; the capacity or right of the entrance. Synonyms: entry, entrance, access, means of entry, admittance, admission;*
 
 An API object that manages external access to the services in a cluster, typically HTTP.
 
 Ingress can provide load balancing, SSL termination and name-based virtual hosting.
 
-### Ingress Controller is needed
+### Ingress Controller is Needed
 This is unlike other types of controllers, which typically run as part of the kube-controller-manager binary, and which are typically started automatically as part of cluster creation.
 
 You can choose any Ingress controller:
@@ -637,7 +642,7 @@ spec:
 
 ```
 
-### Simple application
+### Simple Application
 Conceptually, our setup should look like this:
 ```
     internet
@@ -765,7 +770,7 @@ This is because we have a rule only for /v1 path in our ingress YAML. An Ingress
 
 The biggest advantage of using ingresses is their ability to expose multiple services through a single IP address, so let’s see how to do that.
 
-### Multiple services
+### Multiple Services
 Let's create a second app, it's, basically, the same application with the slightly different output:
 
 ```
@@ -883,7 +888,7 @@ Hey, I'm the next version of gordon; my name is gordon-v2-c78bh
 ```
 It works!
 
-### Configuring Ingress to Handle HTTPS traffic
+### Configuring Ingress to Handle HTTPS Traffic
 Currently, the Ingress can handle incoming HTTPS connections, but it terminates the TLS connection and sends requests to the services unencrypted.
 Since the Ingress terminates the TLS connection, it needs a TLS certificate and private key to do that.
 The two need to be stored in a Kubernetes resource called a Secret.
