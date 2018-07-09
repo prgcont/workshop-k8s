@@ -1,6 +1,9 @@
 # Kubernetes 101
 
-! IMPORTANT - All source code is [here](https://github.com/prgcont/workshop-k8s/tree/master/src/ingress)
+The purpose of this workshop series is to get you on boarded to Kuberentes experience. We will guide you through deploying first applications,
+scaling them and accessing them from outside network via Ingress routing. We will also briefly touch data persistence which will help you to run 
+simple statefull applications.
+
 
 Topics:
 - [Setup minikube](#setup-minikube)
@@ -8,26 +11,21 @@ Topics:
   - [Install Kubectl](#install-kubectl)
   - [Install Minikube](#install-minikube)
   - [Run Minikube](#run-minikube)
-- Deploying your first application
-  - Deploy pod
-  - Deploy service
-  - Scale rc
-- Accessing your application
-  - [Ingress controller](#ingress-controller)
-    - [Ingress Controller is Needed](#ingress-controller-is-needed)
-    - [Why Nginx?](#why-nginx)
-    - [Defaultbackend](#defaultbackend)
-    - [Nginx-Ingress & defaultbackend](#nginx-ingress-and-defaultbackend)
-    - [Simple Application](#simple-application)
-    - [RC and Service](#rc-and-service)
-    - [Multiple Services](#multiple-services)
-    - [Configuring Ingress to Handle HTTPS traffic](#configuring-ingress-to-handle-https-traffic)
-    - [Bonus 1 - Mapping Different Services to Different Hosts](#bonus-1---mapping-different-services-to-different-hosts)
-    - [Bonus 2 - Use Minikube Addon to Enable Nginx Ingress](#bonus-2---use-minikube-addon-to-enable-nginx-ingress)
-  - Routes
-- Persistent storage
-  - Define PV to Kubernetes (NFS)
-  - Create PVC and assign it to PODS
+- [Deploying your first application](#deploying-your-first-application)
+  - [What just happened?](#what-just-happened)
+  - [Scaling your application](#scaling-your-application)
+- [Persistent storage](#persistent-storage)
+- [Ingress controller](#ingress-controller)
+  - [Ingress Controller is Needed](#ingress-controller-is-needed)
+  - [Why Nginx?](#why-nginx)
+  - [Defaultbackend](#defaultbackend)
+  - [Nginx-Ingress & defaultbackend](#nginx-ingress-and-defaultbackend)
+  - [Simple Application](#simple-application)
+  - [RC and Service](#rc-and-service)
+  - [Multiple Services](#multiple-services)
+  - [Configuring Ingress to Handle HTTPS traffic](#configuring-ingress-to-handle-https-traffic)
+  - [Bonus 1 - Mapping Different Services to Different Hosts](#bonus-1---mapping-different-services-to-different-hosts)
+  - [Bonus 2 - Use Minikube Addon to Enable Nginx Ingress](#bonus-2---use-minikube-addon-to-enable-nginx-ingress)
 
 ## Setup Minikube
 
@@ -56,7 +54,265 @@ Starting local Kubernetes cluster...
 Running pre-create checks...
 Creating machine...
 Starting local Kubernetes cluster...
+
 ```
+### Prepare Demo application
+We're going to use a simple NodeJS application. The image is pushed to a DockerHub already (evalle/gordon:v1.0) but you should never-ever download and run unknown images from DockerHub, so let's build it instead.
+
+Here is the app:
+```
+const http = require('http');
+const os = require('os');
+
+console.log("Gordon server starting...");
+
+var handler = function(request, response) {
+  console.log("Received request from " + request.connection.remoteAddress);
+  response.writeHead(200);
+  response.end("You've hit gordon v1, my name is " + os.hostname() + "\n");
+};
+
+var www = http.createServer(handler);
+www.listen(8080);
+```
+If you're not familiar with NodeJS, this app basically answers with greetings and hostname to any request to port 8080.
+
+Save it as `app-v1.js` and let's create a Dockerfile for it:
+```
+FROM node:10.5-slim
+ADD app-v1.js /app-v1.js
+EXPOSE 8080
+ENTRYPOINT ["node", "app-v1.js"]
+```
+now build it:
+```
+$ docker build -t <your_name>/gordon:v1.0
+```
+And push it either to DockerHub or to your favorite Docker registry.
+
+! IMPORTANT - All source code is [here](https://github.com/prgcont/workshop-k8s/tree/master/src/ingress)
+
+
+## Deploying your first application
+
+No as we have minikube and our application ready, we can deploy our application into minikube as easily as running following command:
+```
+$  kubectl run hello --image=evalle/gordon:v1.0 --port=8080 --expose
+```
+
+## What just happened?
+
+We asked Kubernetes to deploy our previously build application and we hinted it, that it will be listening on port 8080 and we wanted it to be exposed to a cluster enabling
+load balancing to work.
+
+## How can I access my app?
+
+To access your app we will hook inside Kubernetes network via `kubectl proxy` command, so please open a new terminal and run
+
+```
+$  kubectl proxy
+```
+! IMPORTANT - Do not stop proxy as following commands will not work.
+
+Than you can access your application via following command:
+```
+curl http://localhost:8001/api/v1/namespaces/default/services/hello/proxy/
+```
+
+### Service
+Did you note a world `service` inside the url? Yes, we are using kubernetes service to access our application. You can see how the service object looks by running:
+```
+$  kubectl describe service hello
+```
+
+Or you can list all other services by:
+```
+$  kubectl get services
+```
+
+Why service is there? The service is very important object in Kubernetes. Its an abstraction for your deployed applications. It helps you to discover your pods, to load balance them and
+many other scenarios. You can learn more in upstream [doc](https://kubernetes.io/docs/concepts/services-networking/service/). You can imagine it in a following way:
+
+```
+
+    +-------+
+    |service|
+    +-------+
+        |
+  +-----+-----+
+  |     |     |	
++---+ +---+ +---+
+|pod| |pod| |pod|
++---+ +---+ +---+
+
+```
+
+
+### Pod
+As you already know a group of containers running in a Kubernetes cluster is called `Pod`. So lets look which pods are running in our Kubernetes cluster by executing:
+
+```
+$  kubectl get pods
+
+```
+
+You can see how the Pod is defined by executing (replace ... by Pod name from previous output):
+
+```
+$ kubectl describe pod ...
+```
+
+you can even access Pod directly via `curl` by:
+
+```
+$  export POD_NAME=$(kubectl get pods | grep hello | cut -f 1 -d ' ' | head -n 1)
+$  curl http://localhost:8001/api/v1/namespaces/default/pods/$PODNAME/proxy/
+```
+
+
+## Scaling your application
+As we deployed our application via `kubectl run` command, it was created using `deployment` object, we can view it via:
+
+```
+$  kubectl describe deployment hello
+```
+
+Examine whole output, you can see a Pod template with our container image, and most important part for us a line with a word `Replicas`. This tells
+Kubernetes how many instances of our application we want to have. We can scale our deployment by executing
+
+```
+$  kubectl scale --replicas=3 deployment/hello
+```
+
+This will ask our Deployment to scale our application to 3 instances. The number of instances is guarded by ReplicaSet. You can list and describe ReplicaSets by following commands
+(replace ... by name of your ReplicaSet):
+
+```
+kubect get rs
+kubect describe rs/...
+```
+*note:* You can still find people using Replication Controllers instead of Replica Set which is outdated approach and you should avoid it as both object works almost same with ReplicaSets enabling you
+to use more advance [labels/selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) mechanisms.
+
+
+
+When we list pods again we should see 3 of them:
+
+```
+$  kubectl get pods
+```
+
+And we can test, that all of the pods are being used by `curl` the service url (remember service is providing load balancing of pods) via:
+
+```
+$  for i in $(seq 1 50); do curl http://localhost:8001/api/v1/namespaces/default/services/hello/proxy/; done
+```
+
+### Tasks
+
+1. How can service find its targeted pods?
+2. Run `minkube dasboard` and find all the objects we described using the Kubernetes Dashboard
+
+
+## Persistent storage
+
+In this chapter we will look how we can add a persistent storage to our applications. This topic is very important as a lot of outstanding
+application needs some storage access. We can argue, that we should not need any persistent storage and just consume API. But in real world
+you will face a need of providing file-system like storage for your pods. Persistent volumes are ussually network filesystems. You can see
+a list of supported providers at upstream [docs](https://kubernetes.io/docs/concepts/storage/volumes/#types-of-volumes)
+
+### Claiming persistent volumes
+
+Minikube comes with auto-provisioned persistent volumes, they are created as you ask for them. Any application which needs a persistent volume
+must claim it. You can do it, by creating Persistent Volume Claim by executing following command:
+
+```
+$  cat <<EOF | kubectl create -f -
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: testpvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+	storage: 2Gi
+```
+
+Then you can list your newly created PVC by executing:
+
+```
+$  kubectl get pvc
+$  kubectl describe pvc testpvc
+```
+
+### Injecting PVC into your application.
+
+To inject our Persistent volume claim into our application we need to edit its "deployment" object by executing:
+
+```
+kubectl edit deployment hello
+```
+
+than look for a following section:
+
+``` yaml
+...
+      containers:
+      - image: evalle/gordon:v1.0
+        imagePullPolicy: IfNotPresent
+        name: hello
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+...
+```
+
+and change it to look like:
+
+``` yaml
+      containers:
+      - image: evalle/gordon:v1.0
+        imagePullPolicy: IfNotPresent
+        name: hello
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /srv/
+          name: test
+      volumes:
+      - name: test
+        persistentVolumeClaim:
+          claimName: testpvc
+      dnsPolicy: ClusterFirst
+```
+
+Now we can select one pod and execute:
+
+```
+kubectl exec -ti $POD_NAME touch /srv/test_file
+
+```
+Than you can check that other pods can see the data by executing following command for each pod:
+
+```
+kubectl exec -ti $POD_NAME ls /srv
+```
+and you should see test_file on every pod.
+
+### Tasks
+1. Scale your application to 0 replicas and run it again and show that data still persist
+2. Scale your application to 0 pod and recreate pvc, will data exist? 
+3. Explain why its different outcome for first two tasks. You can look at PVC [lifecycle](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#lifecycle-of-a-volume-and-claim)
 
 ## Ingress controller
 *Ingress - the action or fact of going in or entering; the capacity or right of the entrance. Synonyms: entry, entrance, access, means of entry, admittance, admission;*
@@ -386,37 +642,6 @@ Conceptually, our setup should look like this:
    --|--|--|--
      [pods]
 ```
-We're going to use a simple NodeJS application for testing. I've pushed image to DockerHub already (evalle/gordon:v1.0) but you should never-ever download and run unknown images from DockerHub, so let's build them instead.
-
-Here is the app:
-```
-const http = require('http');
-const os = require('os');
-
-console.log("Gordon server starting...");
-
-var handler = function(request, response) {
-  console.log("Received request from " + request.connection.remoteAddress);
-  response.writeHead(200);
-  response.end("You've hit gordon v1, my name is " + os.hostname() + "\n");
-};
-
-var www = http.createServer(handler);
-www.listen(8080);
-```
-If you're not familiar with NodeJS, this app basically answers with greetings and hostname to any request to port 8080.
-
-Save it as `app-v1.js` and let's create a Dockerfile for it:
-```
-FROM node:10.5-slim
-ADD app-v1.js /app-v1.js
-ENTRYPOINT ["node", "app-v1.js"]
-```
-now build it:
-```
-$ docker build -t <your_name>/gordon:v1.0
-```
-And push it either to DockerHub or to your favorite Docker registry.
 
 ### RC and Service
 Now let's create a ReplicationController and a service: they will be used by Ingress:
