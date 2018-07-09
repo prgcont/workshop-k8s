@@ -2,7 +2,7 @@
 
 The purpose of this workshop series is to get you on boarded to Kuberentes experience. We will guide you through deploying first applications,
 scaling them and accessing them from outside network via Ingress routing. We will also briefly touch data persistence which will help you to run 
-simple state full applications.
+simple statefull applications.
 
 
 Topics:
@@ -293,8 +293,7 @@ and change it to look like:
       - name: test
         persistentVolumeClaim:
           claimName: testpvc
-	  dnsPolicy: ClusterFirst
-
+      dnsPolicy: ClusterFirst
 ```
 
 Now we can select one pod and execute:
