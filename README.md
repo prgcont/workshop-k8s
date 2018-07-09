@@ -57,7 +57,7 @@ Starting local Kubernetes cluster...
 
 ```
 ### Prepare Demo application
-We're going to use a simple NodeJS application. The image is pushed to a DockerHub already (evalle/gordon:v1.0) but you should never-ever download and run unknown images from DockerHub, so let's build it instead.
+We're going to use a simple NodeJS application. The image is pushed to a DockerHub already (`prgcont/gordon:v1.0`) but you should never-ever download and run unknown images from DockerHub, so let's build it instead.
 
 Here is the app:
 ```
@@ -86,7 +86,8 @@ ENTRYPOINT ["node", "app-v1.js"]
 ```
 now build it:
 ```
-$ docker build -t <your_name>/gordon:v1.0
+$ export REGISTRY_USER=<your_name>
+$ docker build -t ${REGISTRY_USER}/gordon:v1.0 .
 ```
 And push it either to DockerHub or to your favorite Docker registry.
 
@@ -97,7 +98,7 @@ And push it either to DockerHub or to your favorite Docker registry.
 
 No as we have minikube and our application ready, we can deploy our application into minikube as easily as running following command:
 ```
-$  kubectl run hello --image=evalle/gordon:v1.0 --port=8080 --expose
+$  kubectl run hello --image=${REGISTRY_USER}/gordon:v1.0 --port=8080 --expose
 ```
 
 ## What just happened?
@@ -139,7 +140,7 @@ many other scenarios. You can learn more in upstream [doc](https://kubernetes.io
     |service|
     +-------+
         |
-  +-----+-----+
+  +-----|-----+
   |     |     |	
 +---+ +---+ +---+
 |pod| |pod| |pod|
@@ -156,17 +157,17 @@ $  kubectl get pods
 
 ```
 
-You can see how the Pod is defined by executing (replace ... by Pod name from previous output):
+You can see how the Pod is defined by executing (replace `<pod_name>` by Pod name from previous output):
 
 ```
-$ kubectl describe pod ...
+$ kubectl describe pod <pod_name>
 ```
 
 you can even access Pod directly via `curl` by:
 
 ```
 $  export POD_NAME=$(kubectl get pods | grep hello | cut -f 1 -d ' ' | head -n 1)
-$  curl http://localhost:8001/api/v1/namespaces/default/pods/$PODNAME/proxy/
+$  curl -L http://localhost:8001/api/v1/namespaces/default/pods/$PODNAME/proxy/
 ```
 
 
@@ -188,12 +189,11 @@ This will ask our Deployment to scale our application to 3 instances. The number
 (replace ... by name of your ReplicaSet):
 
 ```
-kubect get rs
-kubect describe rs/...
+kubectl get rs
+kubectl describe rs/...
 ```
 *note:* You can still find people using Replication Controllers instead of Replica Set which is outdated approach and you should avoid it as both object works almost same with ReplicaSets enabling you
 to use more advance [labels/selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) mechanisms.
-
 
 
 When we list pods again we should see 3 of them:
@@ -211,7 +211,7 @@ $  for i in $(seq 1 50); do curl http://localhost:8001/api/v1/namespaces/default
 ### Tasks
 
 1. How can service find its targeted pods?
-2. Run `minkube dasboard` and find all the objects we described using the Kubernetes Dashboard
+2. Run `minikube dashboard` and find all the objects we described using the Kubernetes Dashboard
 
 
 ## Persistent storage
@@ -227,7 +227,7 @@ Minikube comes with auto-provisioned persistent volumes, they are created as you
 must claim it. You can do it, by creating Persistent Volume Claim by executing following command:
 
 ```
-$  cat <<EOF | kubectl create -f -
+cat <<EOF | kubectl create -f -
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
@@ -237,7 +237,8 @@ spec:
     - ReadWriteMany
   resources:
     requests:
-	storage: 2Gi
+      storage: 2Gi
+EOF
 ```
 
 Then you can list your newly created PVC by executing:
@@ -260,7 +261,7 @@ than look for a following section:
 ``` yaml
 ...
       containers:
-      - image: evalle/gordon:v1.0
+      - image: <your_name>/gordon:v1.0
         imagePullPolicy: IfNotPresent
         name: hello
         ports:
@@ -277,7 +278,7 @@ and change it to look like:
 
 ``` yaml
       containers:
-      - image: evalle/gordon:v1.0
+      - image: <your_name>/gordon:v1.0
         imagePullPolicy: IfNotPresent
         name: hello
         ports:
@@ -317,6 +318,10 @@ and you should see test_file on every pod.
 ## Ingress controller
 *Ingress - the action or fact of going in or entering; the capacity or right of the entrance. Synonyms: entry, entrance, access, means of entry, admittance, admission;*
 
+An API object that manages external access to the services in a cluster, typically HTTP.
+
+Ingress can provide load balancing, SSL termination and name-based virtual hosting.
+
 ### Ingress Controller is needed
 This is unlike other types of controllers, which typically run as part of the kube-controller-manager binary, and which are typically started automatically as part of cluster creation.
 
@@ -335,7 +340,8 @@ You can choose any Ingress controller:
 An Ingress with no rules sends all traffic to a single default backend. Traffic is routed to your default backend if none of the Hosts in your Ingress match the Host in the request header, and/or none of the paths match the URL of the request.
 
 ### Nginx-Ingress and Defaultbackend
-```
+
+```YAML
 ---
 
 apiVersion: v1
@@ -343,6 +349,7 @@ kind: Namespace
 metadata:
   name: ingress-nginx
 ---
+
 
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -627,6 +634,7 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 1
+
 ```
 
 ### Simple application
@@ -660,7 +668,7 @@ spec:
         app: gordon-v1
     spec:
       containers:
-      - image: evalle/gordon:v1.0
+      - image: <your_name>/gordon:v1.0
         name: nodejs
         imagePullPolicy: Always
 ---
@@ -715,6 +723,7 @@ spec:
           servicePort: 80
 EOF
 ```
+
 To be able to access the ingress from the outside we’ll need to make sure the hostname resolves to the IP of the ingress controller.
 We can do it via:
 
@@ -803,7 +812,7 @@ spec:
         app: gordon-v2
     spec:
       containers:
-      - image: evalle/gordon:v2.0
+      - image: <your_name>/gordon:v2.0
         name: nodejs
         imagePullPolicy: Always
 ---
