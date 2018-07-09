@@ -57,7 +57,7 @@ Starting local Kubernetes cluster...
 
 ```
 ### Prepare Demo application
-We're going to use a simple NodeJS application. The image is pushed to a DockerHub already (${REGISTRY_USER}/gordon:v1.0) but you should never-ever download and run unknown images from DockerHub, so let's build it instead.
+We're going to use a simple NodeJS application. The image is pushed to a DockerHub already (`prgcont/gordon:v1.0`) but you should never-ever download and run unknown images from DockerHub, so let's build it instead.
 
 Here is the app:
 ```
