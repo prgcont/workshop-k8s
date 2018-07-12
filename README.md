@@ -172,7 +172,7 @@ you can even access Pod directly via `curl` by:
 
 ```
 $  export POD_NAME=$(kubectl get pods | grep hello | cut -f 1 -d ' ' | head -n 1)
-$  curl -L http://localhost:8001/api/v1/namespaces/default/pods/$PODNAME/proxy/
+$  curl -L http://localhost:8001/api/v1/namespaces/default/pods/$POD_NAME/proxy/
 ```
 
 
