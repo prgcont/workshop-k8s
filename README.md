@@ -734,7 +734,7 @@ To be able to access the ingress from the outside we’ll need to make sure the 
 We can do it via:
 
 - adding the hostname gordon.example.com into /etc/hosts (don't forget to delete it afterwards!)
-- changing the hostname `gordon.example.com` to `gordon.example.com.<minikube's_ip>` in the previous YAML file - it will use [nip.io](http://nip.io/) service for resolving the hostname
+- changing the hostname `gordon.example.com` to `gordon.example.com.<minikube's_ip>.nip.io` in the previous YAML file - it will use [nip.io](http://nip.io/) service for resolving the hostname
 - in case of production applications we will need to set up DNS resolving properly.
 
 Check that ingress is available:
