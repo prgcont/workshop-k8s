@@ -711,6 +711,7 @@ Great, now let's create our first version of ingress:
 
 ```
 $ cat <<EOF | kubectl create -f -
+apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: gordon
