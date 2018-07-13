@@ -4,8 +4,8 @@ The purpose of this workshop series is to get you on boarded to Kuberentes exper
 scaling them and accessing them from outside network via Ingress routing. We will also briefly touch data persistence which will help you to run
 simple statefull applications.
 
-
 Topics:
+
 - [Setup minikube](#setup-minikube)
   - [Install Hypervisor](#install-hypervisor)
   - [Install Kubectl](#install-kubectl)
@@ -38,20 +38,25 @@ Topics:
 ! IMPORTANT ! VT-x or AMD-v virtualization must be enabled in your computer’s BIOS.
 
 ### Install Hypervisor
-If you do not already have a hypervisor installed, install one now.
- - For OS X, install `VirtualBox` or `VMware Fusion`, or `HyperKit`.
- - For Linux, install `VirtualBox` or `KVM`.
- - For Windows, install `VirtualBox` or `Hyper-V`.
+
+If you do not already have a hypervisor installed, install one now:
+
+- For OS X, install `VirtualBox` or `VMware Fusion`, or `HyperKit`.
+- For Linux, install `VirtualBox` or `KVM`.
+- For Windows, install `VirtualBox` or `Hyper-V`.
 
 Note: Minikube also supports a `--vm-driver=none` option that runs the Kubernetes components on the host and not in a VM. Docker is required to use this driver but a hypervisor is not required.
 
 ### Install Kubectl
+
 Install kubectl according to [these instructions](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 
 ### Install Minikube
+
 Install Minikube according to the instructions for the [release 0.28.0](https://github.com/kubernetes/minikube/releases/tag/v0.28.0)
 
 ### Run Minikube
+
 If you want to change the VM driver add the appropriate `--vm-driver=xxx` flag to `minikube start`.
 
 ```
@@ -63,6 +68,7 @@ Starting local Kubernetes cluster...
 
 ```
 ## Prepare Demo Application
+
 We're going to use a simple NodeJS application. The image is already pushed to DockerHub (`prgcont/gordon:v1.0`) but you should never-ever download and run unknown images from DockerHub, so let's build it instead.
 
 Here is the app:
@@ -99,7 +105,6 @@ And push it either to DockerHub or to your favorite Docker registry.
 
 ! IMPORTANT - All source code is [here](https://github.com/prgcont/workshop-k8s/tree/master/src/ingress)
 
-
 ## Deploy Your First Application
 
 No as we have minikube and our application ready, we can deploy our application into minikube as easily as running following command:
@@ -127,6 +132,7 @@ curl http://localhost:8001/api/v1/namespaces/default/services/hello/proxy/
 ```
 
 ## Service
+
 Did you note a world `service` inside the url? Yes, we are using kubernetes service to access our application. You can see how the service object looks by running:
 ```
 $  kubectl describe service hello
@@ -155,6 +161,7 @@ many other scenarios. You can learn more in upstream [doc](https://kubernetes.io
 ```
 
 ## Pod
+
 As you already know a group of containers running in a Kubernetes cluster is called `Pod`. So lets look which pods are running in our Kubernetes cluster by executing:
 
 ```
@@ -177,6 +184,7 @@ $  curl -L http://localhost:8001/api/v1/namespaces/default/pods/$POD_NAME/proxy/
 
 
 ## Scaling Your Application
+
 As we deployed our application via `kubectl run` command, it was created using `deployment` object, we can view it via:
 
 ```
@@ -316,11 +324,13 @@ kubectl exec -ti $POD_NAME ls /srv
 and you should see test_file on every pod.
 
 ### Tasks
+
 1. Scale your application to 0 replicas and run it again and show that data still persist
 2. Scale your application to 0 pod and recreate pvc, will data exist?
 3. Explain why its different outcome for first two tasks. You can look at PVC [lifecycle](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#lifecycle-of-a-volume-and-claim)
 
 ## Ingress Controller
+
 *Ingress - the action or fact of going in or entering; the capacity or right of the entrance. Synonyms: entry, entrance, access, means of entry, admittance, admission;*
 
 An API object that manages external access to the services in a cluster, typically HTTP.
@@ -328,6 +338,7 @@ An API object that manages external access to the services in a cluster, typical
 Ingress can provide load balancing, SSL termination and name-based virtual hosting.
 
 ### Ingress Controller is Needed
+
 This is unlike other types of controllers, which typically run as part of the kube-controller-manager binary, and which are typically started automatically as part of cluster creation.
 
 You can choose any Ingress controller:
@@ -337,113 +348,31 @@ You can choose any Ingress controller:
 - ...
 
 ### Why Nginx?
+
 - Nginx Ingress Controller officially supported by Kubernetes, as we already now.
 - it’s totally free :)
 - It’s the default option for minikube, which we will use to test Ingress behavior in Kubernetes.
 
 ## Defaultbackend
+
 An Ingress with no rules sends all traffic to a single default backend. Traffic is routed to your default backend if none of the Hosts in your Ingress match the Host in the request header, and/or none of the paths match the URL of the request.
 
 ### Nginx-Ingress and Defaultbackend
 
-```YAML
----
+Apply the following YAMl file to acivate defaultbackend and nginx-ingress-controller:
 
+```YAML
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: ingress-nginx
+  name: nginx-ingress
 ---
-
-
-apiVersion: extensions/v1beta1
-kind: Deployment
-metadata:
-  name: default-http-backend
-  labels:
-    app: default-http-backend
-  namespace: ingress-nginx
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: default-http-backend
-  template:
-    metadata:
-      labels:
-        app: default-http-backend
-    spec:
-      terminationGracePeriodSeconds: 60
-      containers:
-      - name: default-http-backend
-        # Any image is permissible as long as:
-        # 1. It serves a 404 page at /
-        # 2. It serves 200 on a /healthz endpoint
-        image: gcr.io/google_containers/defaultbackend:1.4
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8080
-            scheme: HTTP
-          initialDelaySeconds: 30
-          timeoutSeconds: 5
-        ports:
-        - containerPort: 8080
-        resources:
-          limits:
-            cpu: 10m
-            memory: 20Mi
-          requests:
-            cpu: 10m
-            memory: 20Mi
----
-
-apiVersion: v1
-kind: Service
-metadata:
-  name: default-http-backend
-  namespace: ingress-nginx
-  labels:
-    app: default-http-backend
-spec:
-  ports:
-  - port: 80
-    targetPort: 8080
-  selector:
-    app: default-http-backend
----
-
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: nginx-configuration
-  namespace: ingress-nginx
-  labels:
-    app: ingress-nginx
----
-
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: tcp-services
-  namespace: ingress-nginx
----
-
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: udp-services
-  namespace: ingress-nginx
----
-
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: nginx-ingress-serviceaccount
-  namespace: ingress-nginx
-
+  namespace: nginx-ingress
 ---
-
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
 metadata:
@@ -495,14 +424,12 @@ rules:
       - ingresses/status
     verbs:
       - update
-
 ---
-
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: Role
 metadata:
   name: nginx-ingress-role
-  namespace: ingress-nginx
+  namespace: nginx-ingress
 rules:
   - apiGroups:
       - ""
@@ -518,10 +445,6 @@ rules:
     resources:
       - configmaps
     resourceNames:
-      # Defaults to "<election-id>-<ingress-class>"
-      # Here: "<ingress-controller-leader>-<nginx>"
-      # This has to be adapted if you change either parameter
-      # when launching the nginx-ingress-controller.
       - "ingress-controller-leader-nginx"
     verbs:
       - get
@@ -538,14 +461,14 @@ rules:
       - endpoints
     verbs:
       - get
-
+      - create
+      - update
 ---
-
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: RoleBinding
 metadata:
   name: nginx-ingress-role-nisa-binding
-  namespace: ingress-nginx
+  namespace: nginx-ingress
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -553,10 +476,8 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: nginx-ingress-serviceaccount
-    namespace: ingress-nginx
-
+    namespace: nginx-ingress
 ---
-
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:
@@ -568,81 +489,119 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: nginx-ingress-serviceaccount
-    namespace: ingress-nginx
+    namespace: nginx-ingress
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: default-http-backend
+  labels:
+    k8s-app: default-http-backend
+  namespace: nginx-ingress
+spec:
+  template:
+    metadata:
+      labels:
+        k8s-app: default-http-backend
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+      - name: default-http-backend
+        image: k8s.gcr.io/defaultbackend:1.3
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: 10m
+            memory: 20Mi
+          requests:
+            cpu: 10m
+            memory: 20Mi
 ---
-
+apiVersion: v1
+kind: Service
+metadata:
+  name: default-http-backend
+  namespace: default
+  labels:
+    k8s-app: default-http-backend
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    k8s-app: default-http-backend
+---
+kind: ConfigMap
+apiVersion: v1
+data:
+  disable-ipv6: "true"
+  server-tokens: "false"
+metadata:
+  name: nginx-conf
+  namespace: nginx-ingress
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
   name: nginx-ingress-controller
-  namespace: ingress-nginx
+  namespace: nginx-ingress
 spec:
-  replicas: 1
   selector:
     matchLabels:
-      app: ingress-nginx
+        k8s-app: nginx-ingress-lb
   template:
     metadata:
       labels:
-        app: ingress-nginx
+        k8s-app: nginx-ingress-lb
+      annotations:
     spec:
+      hostNetwork: true
       serviceAccountName: nginx-ingress-serviceaccount
       containers:
         - name: nginx-ingress-controller
-          image: quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.16.2
-          args:
-            - /nginx-ingress-controller
-            - --default-backend-service=$(POD_NAMESPACE)/default-http-backend
-            - --configmap=$(POD_NAMESPACE)/nginx-configuration
-            - --tcp-services-configmap=$(POD_NAMESPACE)/tcp-services
-            - --udp-services-configmap=$(POD_NAMESPACE)/udp-services
-            - --publish-service=$(POD_NAMESPACE)/ingress-nginx
-            - --annotations-prefix=nginx.ingress.kubernetes.io
-          securityContext:
-            capabilities:
-                drop:
-                - ALL
-                add:
-                - NET_BIND_SERVICE
-            # www-data -> 33
-            runAsUser: 33
+          image: quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.15.0
           env:
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
+             - name: POD_NAME
+               valueFrom:
+                 fieldRef:
+                   fieldPath: metadata.name
+             - name: POD_NAMESPACE
+               valueFrom:
+                 fieldRef:
+                   fieldPath: metadata.namespace
+          args:
+             - /nginx-ingress-controller
+             - --default-backend-service=default/default-http-backend
+             - --default-ssl-certificate=$(POD_NAMESPACE)/tls-certificate
+             - --ingress-class=nginx
+             - --configmap=$(POD_NAMESPACE)/nginx-conf
           ports:
-          - name: http
-            containerPort: 80
-          - name: https
-            containerPort: 443
+          - containerPort: 80
+            hostPort: 80
+          - containerPort: 443
+            hostPort: 443
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 10254
+              scheme: HTTP
           livenessProbe:
-            failureThreshold: 3
             httpGet:
               path: /healthz
               port: 10254
               scheme: HTTP
             initialDelaySeconds: 10
-            periodSeconds: 10
-            successThreshold: 1
             timeoutSeconds: 1
-          readinessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /healthz
-              port: 10254
-              scheme: HTTP
-            periodSeconds: 10
-            successThreshold: 1
-            timeoutSeconds: 1
-
 ```
 
 ### Simple Application
+
 Conceptually, our setup should look like this:
 ```
     internet
@@ -657,7 +616,8 @@ Conceptually, our setup should look like this:
 ```
 
 ### RC and Service
-Now let's create a ReplicationController and a service: they will be used by Ingress:
+
+Now let's create a ReplicationController and a service: they will be used by Ingress
 ```
 $ cat <<EOF | kubectl create -f -
 apiVersion: v1
@@ -772,6 +732,7 @@ This is because we have a rule only for /v1 path in our ingress YAML. An Ingress
 The biggest advantage of using ingresses is their ability to expose multiple services through a single IP address, so let’s see how to do that.
 
 ### Multiple Services
+
 Let's create a second app, it's, basically, the same application with the slightly different output:
 
 ```
@@ -800,7 +761,7 @@ Build it:
 ```
 $ docker build -t <your_name>/gordon:v2.0
 ```
-And push it either to DockerHub or to Harbor (don't forget to tag it accordingly).
+And push it either DockerHub (don't forget to tag it accordingly).
 
 Let's create a second ReplicationController and a Service:
 ```
@@ -890,6 +851,7 @@ Hey, I'm the next version of gordon; my name is gordon-v2-c78bh
 It works!
 
 ### Configuring Ingress to Handle HTTPS Traffic
+
 Currently, the Ingress can handle incoming HTTPS connections, but it terminates the TLS connection and sends requests to the services unencrypted.
 Since the Ingress terminates the TLS connection, it needs a TLS certificate and private key to do that.
 The two need to be stored in a Kubernetes resource called a Secret.
@@ -949,6 +911,7 @@ You've hit gordon v1, my name is gordon-v1-64hhw
 ```
 
 ### Bonus 1 - Mapping Different Services to Different Hosts
+
 Requests received by the controller will be forwarded to either service `foo` or `bar`, depending on the Host header in the request (exactly like how virtual hosts are handled in web servers).
 Of course, DNS needs to point both the `foo.example.com` and the `bar.example.com` domain names to the Ingress controller’s IP address.
 
@@ -975,6 +938,7 @@ spec:
 ```
 
 ### Bonus 2 - Use Minikube Addon to Enable Nginx Ingress
+
 ```
 $ minikube status
 minikube: Running
