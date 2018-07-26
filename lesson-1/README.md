@@ -359,7 +359,7 @@ An Ingress with no rules sends all traffic to a single default backend. Traffic 
 
 ### Nginx-Ingress and Defaultbackend
 
-You can just run ``minkube addon enable ingress`` or apply the following YAML file to acivate defaultbackend and nginx-ingress-controller:
+You can just run ``minkube addons enable ingress`` or apply the following YAML file to acivate defaultbackend and nginx-ingress-controller:
 
 ```YAML
 apiVersion: v1
