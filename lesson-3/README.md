@@ -239,7 +239,20 @@ kubectl delete clusterrole etcd-operator
 kubectl delete clusterrolebinding etcd-operator
 ```
 
-## Operators Framework
+## Operator Framework
+
+[Operator Framework](https://coreos.com/operators/) is set of tools that simplifies creation and lifecycle management of k8s operators.
+
+The operators created by Operator Framework are using same primitives like k8s controller which can be found in this diagram:
+
+![Operator internals](./pic/operator_sdk_internals.jpeg "source: https://itnext.io/under-the-hood-of-the-operator-sdk-eebc8fdeebbf")
+
+### Operator SDK ###
+
+ 
+
+### Operator Lifecycle Manager ###
+
 
 - Introduce/describe
 - Walk through components
