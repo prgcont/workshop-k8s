@@ -43,128 +43,78 @@ spec:
     - ct
 ```
 
-## Exercise 1 - Prepare minikube environment
 
-## Exercise 2 - Deploy ETCD cluster using ETCD-Operator
+## Deploy etcd cluster
 
-### Setup ETCD Operator 
+We will now try to deploy etcd cluster into our Kubernetes. We will use etcd operator for it.
+As we want to do it properly we want our operator to by managed by a Lifecycle Operator. Lifecycle
+Operator enables you to manage your Operators inside Kuberentes clusters. It's mostly responsible for:
 
-Install RBAC rules (cluster Roles and RoleBindings):
-```bash 
-# Create ClusterRole object
-echo | kubectl create -f - <<EOF
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRole
-metadata:
-  name: etcd-operator
-rules:
-- apiGroups:
-  - etcd.database.coreos.com
-  resources:
-  - etcdclusters
-  - etcdbackups
-  - etcdrestores
-  verbs:
-  - "*"
-- apiGroups:
-  - apiextensions.k8s.io
-  resources:
-  - customresourcedefinitions
-  verbs:
-  - "*"
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  - services
-  - endpoints
-  - persistentvolumeclaims
-  - events
-  verbs:
-  - "*"
-- apiGroups:
-  - apps
-  resources:
-  - deployments
-  verbs:
-  - "*"
-# The following permissions can be removed if not using S3 backup and TLS
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - get
-EOF
+* Deploying Operators into namespaces
+* Updating Operators
+* Defines channels for operators delivery (Testing/Prod)
+* Package Operators
+* Operators inventory
 
-# Create ClusterRoleBinding object
-echo | kubectl create -f - <<EOF
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRoleBinding
-metadata:
-  name: etcd-operator
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: etcd-operator
-subjects:
-- kind: ServiceAccount
-  name: default
-  namespace: default
-EOF
+You can read more about (Operator Lifecycle Manager)[https://github.com/prgcont/operator-lifecycle-manager/blob/master/Documentation/design/philosophy.md]
+
+### Deploying Operator Lifecycle Manager
+``` bash
+git clone https://github.com/prgcont/operator-lifecycle-manager
+cd operator-lifecycle-manager
+kubectl apply -f deploy/upstream/manifests/0.5.0
+kubectl apply -f deploy/upstream/manifests/0.5.0
+
 ```
 
-Verify that RBAC objects are created
-```bash
-# Verify that RBAC objects are present:
-kubectl get clusterrole etcd-operator
+Then check that Operator Lifecycle Manager is up and running:
 
-kubectl get clusterrolebinding etcd-operator
+``` bash
+kubectl -n kube-system get pods
 ```
 
-Install ETCD Operator itself:
-```bash
-echo | kubectl create -f - <<EOF
-apiVersion: extensions/v1beta1
-kind: Deployment
+You should see output similar to:
+
+```
+NAME                                    READY     STATUS    RESTARTS   AGE
+alm-operator-8d6dc8b65-8cnrb            1/1       Running   0          1m
+catalog-operator-f764ff46d-j8msc        1/1       Running   0          1m
+...
+```
+
+
+### Deploying etcd operator
+When Lifecycle Manager Operator is successfully deployed and is managing our cluster
+we can deploy etcd operator to a newly created etc namespace. 
+
+
+``` bash
+kubectl create namespace etc
+```
+and deploy operator here by applying InstallPlan, this will assure that etcd
+operator is deployed to our etc namespaces and is watch its crd object.
+
+``` yaml
+kind: InstallPlan-v1
 metadata:
-  name: etcd-operator
+  namespace: etc
+  name: etcd
 spec:
-  replicas: 1
-  template:
-    metadata:
-      labels:
-        name: etcd-operator
-    spec:
-      containers:
-      - name: etcd-operator
-        image: docker.io/prgcont/etcd-operator:v0.9.2
-        command:
-        - etcd-operator
-        # Uncomment to act for resources in all namespaces. More information in doc/clusterwide.md
-        #- -cluster-wide
-        env:
-        - name: MY_POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        - name: MY_POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-EOF
-
-# Verify that etcd-operator deployment is running
-kubectl get deployment etcd-operator
-
-# Verify that etcd-operator created CRD 
-kubectl get crd
+  clusterServiceVersionNames:
+  - etcdoperator.v0.9.2
+  approval: Automatic
 ```
 
-### Install ETCD Cluster using ETCD Operator
+Tasks:
+* Check that etcd operator is deployed
+* List all available crd
 
-```bash
-echo | kubectl create -f - <<EOF
+
+### Install etcd Cluster using etcd Operator
+
+To install etcd cluster we need to apply following CRD object. 
+
+``` yaml
 apiVersion: "etcd.database.coreos.com/v1beta2"
 kind: "EtcdCluster"
 metadata:
@@ -176,26 +126,29 @@ spec:
 EOF
 ```
 
-Verify the state of deployed ETCD cluster
+Verify the state of deployed etcd cluster
 ```bash
-kubectl describe etcdcluster example-etcd-cluster
+kubectl -n etc  describe etcdcluster example-etcd-cluster
 ```
 
-#### Check the health of ETCD Cluster ####
+Tasks
+* Check that etcdclusters.etcd.database.coreos.com CRD is available
 
-Exec into one ETCD pod
+#### Check the health of etcd Cluster ####
+
+Exec into one etcd pod
 ```bash
 # Get arbitrary pod name using 
-kubectl get po -l etcd_cluster=example-etcd-cluster
+# kubectl -n get po -l etcd_cluster=example-etcd-cluster
 
 # Exec into etcd pod
-kubectl exec -it <POD_NAME> -- sh
+# kubectl -n etc exec -it <POD_NAME> -- sh
 
 # In container:
 # Update env variable
-export ETCDCTL_API=3
+export etcdCTL_API=3
 
-# List ETCD members 
+# List etcd members 
 etcdctl member list
 
 # Write and read record
@@ -203,15 +156,18 @@ etcdctl put /here test
 etcdctl get /here
 ```
 
-#### Optional exercises ####
-
-- Scale Currently deployed ETCD cluster and verify that record you made into the DB still exists,
-- deploy ETCD cluster in other namespaces (see the *Note on Cluster wide operators*)
+Tasks:
+* Scale up Currently deployed etcd cluster and verify that record you made into the DB still exists,
+* Deploy second etcd cluster in 'etc2' namespace
+* Check that both clusters are independent (contains different data)
 
 #### Note on Cluster wide operators ####
 
-The above example created `etcd-operator` in `default` namespace and ETCD Cluster in same namespace. 
-By default ETCD Operator reacts only on `etcdcluster` objects that are in same namespace. This behavior can be changed by passing arg `-cluster-wide` to `etcd-operator` and creating `etcdcluster` object with annotation: `etcd.database.coreos.com/scope: clusterwide`. From our example: 
+Note: This can lead to security issues and render you cluster to be hard to maintain
+
+The above example created `etcd-operator` in `default` namespace and etcd Cluster in same namespace. 
+By default etcd Operator reacts only on `etcdcluster` objects that are in same namespace. This behavior can be changed by passing
+arg `-cluster-wide` to `etcd-operator` and creating `etcdcluster` object with annotation: `etcd.database.coreos.com/scope: clusterwide`. From our example: 
 
 ```yaml
 apiVersion: "etcd.database.coreos.com/v1beta2"
@@ -226,18 +182,183 @@ spec:
   repository: "docker.io/prgcont/etcd"
 ```
 
-Note: You need to update RBAC rules if you want ETCD Operator to manage resources across all kubernetes cluster. 
+Note: You need to update RBAC rules if you want etcd operator to manage resources across all kubernetes cluster. 
 
-### Cleanup ETCD Operator from k8s cluster
 
-```bash
-kubectl delete etcdcluster example-etcd-cluster
-kubectl delete -f example/deployment.yaml
-kubectl delete endpoints etcd-operator
-kubectl delete crd etcdclusters.etcd.database.coreos.com
-kubectl delete clusterrole etcd-operator
-kubectl delete clusterrolebinding etcd-operator
+
+
+## Write simple dummy Operator in Python
+
+We will try to create a very simple 'operator' in Python. IT will be able to schedule desired
+count of replicas of our Gordon up and it will be able to assure that desired count of replicas
+are runing.
+
+We will start by defining crd which will be monitored by our operator.
+
+```yaml
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: gordons.operator.prgcont.cz
+spec:
+  group: operator.prgcont.cz
+  version: v1
+  scope: Namespaced
+  names:
+    plural: gordons
+    singular: gordon
+    kind: Gordon
+    shortNames:
+    - gn
 ```
+
+Then we need to run following python code:
+
+``` python
+import yaml
+
+
+from kubernetes import client, config, watch
+
+# Following line is sourcing your ~/.kube/config so you are authenticated same
+# way as kubectl is
+config.load_kube_config()
+v1 = client.CoreV1Api()
+crds = client.CustomObjectsApi()
+
+crd_group = "operator.prgcont.cz" # group of crd to be vatched
+namespace = 'default'
+
+pod_template = yaml.safe_load("""
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: gordon-
+spec:
+  containers:
+    - name: gordon
+      image: prgcont/gordon:v1.0
+""")
+
+
+def main():
+    # our simple watch loop for changes in our crd
+    stream = watch.Watch().stream(crds.list_namespaced_custom_object,
+                                  crd_group,
+                                  'v1',
+                                  namespace,
+                                  'gordons')
+    for event in stream:
+        if event['type'] == 'ADDED':
+            deploy(event['object'])
+        elif event['type'] == 'MODIFIED':
+            change(event['object'])
+        elif event['type'] == 'DELETED':
+            delete(event['object'])
+        else:
+            print('Unsupported change type: %s' % event['type'])
+
+
+def deploy(crd):
+    replicas = crd['spec']['gordon']['replicas']
+    name = crd['metadata']['name']
+    if 'state' in crd:
+        print('[%s] Alerady exists!' % name)
+        return
+    else:
+        crd['state'] = {}
+        crd['state']['pods'] = []
+    print('[%s] Deploying %s replicas of gordon.' %
+          (name,
+           replicas))
+    i = 1
+    while i <= replicas:
+        resp = v1.create_namespaced_pod(namespace, pod_template)
+        crd['state']['pods'].append(resp.metadata.name)
+        print('[%s] Scheduled pod %s' % (name,
+                                         resp.metadata.name))
+        i += 1
+
+    crd['state']['replicas'] = replicas
+    crds.patch_namespaced_custom_object(crd_group,
+                                        'v1',
+                                        namespace,
+                                        'gordons',
+                                        name,
+                                        crd)
+
+
+def change(crd):
+    replicas = crd['spec']['gordon']['replicas']
+    name = crd['metadata']['name']
+    print('[%s] Modifying.' % name)
+    i = crd['state']['replicas']
+    if i > replicas:
+        while i > replicas:
+            pod = crd['state']['pods'].pop()
+            print('[%s] Removing pod %s .' % (name, pod))
+            v1.delete_namespaced_pod(pod,
+                                     namespace,
+                                     client.V1DeleteOptions())
+            i -= 1
+    elif i < replicas:
+        while i <= replicas:
+            resp = v1.create_namespaced_pod(namespace, pod_template)
+            crd['state']['pods'].append(resp.metadata.name)
+            print('[%s] Scheduled pod %s' % (name,
+                                             resp.metadata.name))
+            i += 1
+    crd['state']['replicas'] = i
+    crds.patch_namespaced_custom_object(crd_group,
+                                        'v1',
+                                        namespace,
+                                        'gordons',
+                                        name,
+                                        crd)
+
+
+def delete(crd):
+	pass
+
+
+class Checker(threading.Thread):
+
+    def run(self):
+        while True:
+            time.sleep(1)
+
+
+if __name__ == "__main__":
+    checker = Checker()
+    checker.daemon = True
+    checker.start()
+    main()
+
+```
+
+After running the code create gordon cluster by applying following object:
+``` yaml
+apiVersion: "operator.prgcont.cz/v1"
+kind: Gordon
+metadata:
+  name: gordoncluster
+spec:
+  gordon: 
+    replicas: 3
+```
+
+Then you should check that 3 replicas of gordon pods are running via:
+``` bash
+kubectl get pods
+```
+
+Tasks:
+* Explain what operator is doing, identify all Kubernetes API Calls
+* Implement delete() function which will stop all pods
+* Modify Checker().run() function so it will check that managed pods are running and 
+create new ones if any of them was terminated (hint, use ``get_namespaced_pod`` function 
+and ``kubectl delete pod`` commands to test it).
+* 
 
 ## Operator Framework
 
@@ -247,16 +368,6 @@ The operators created by Operator Framework are using same primitives like k8s c
 
 ![Operator internals](./pic/operator_sdk_internals.jpeg "source: https://itnext.io/under-the-hood-of-the-operator-sdk-eebc8fdeebbf")
 
-### Operator SDK ###
+Advance task:
+* Try to follow the [tutorial](https://github.com/operator-framework/getting-started)
 
- 
-
-### Operator Lifecycle Manager ###
-
-
-- Introduce/describe
-- Walk through components
-  - Lifecycle manager
-  - Operator-SDK
-
-## Exercise 3 - Write simple Operator in Python
