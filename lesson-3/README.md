@@ -217,7 +217,20 @@ spec:
     - gn
 ```
 
+Before running the code below:
+
+```bash
+# create a virtual environment for python
+virtualenv k8s
+# load the virtual env
+. k8s/bin/activate
+# install the dependency
+pip install kubernetes
+```
+
 Then we need to run following python code:
+
+**Note:** this a daemon so use `&`, `tmux`, `screen` or another terminal
 
 ``` python
 import threading
