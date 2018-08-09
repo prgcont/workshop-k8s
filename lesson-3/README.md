@@ -63,8 +63,6 @@ You can read more about (Operator Lifecycle Manager)[https://github.com/prgcont/
 git clone https://github.com/prgcont/operator-lifecycle-manager
 cd operator-lifecycle-manager
 kubectl apply -f deploy/upstream/manifests/0.5.0
-kubectl apply -f deploy/upstream/manifests/0.5.0
-
 ```
 
 Then check that Operator Lifecycle Manager is up and running:
