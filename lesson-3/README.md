@@ -64,8 +64,9 @@ git clone https://github.com/prgcont/operator-lifecycle-manager
 cd operator-lifecycle-manager
 kubectl apply -f deploy/upstream/manifests/0.5.0
 ```
+Note: If previous apply coomand ends with error please run it again.
 
-Then check that Operator Lifecycle Manager is up and running:
+After should check that Operator Lifecycle Manager is up and running:
 
 ``` bash
 kubectl -n kube-system get pods
@@ -89,10 +90,15 @@ we can deploy etcd operator to a newly created etc namespace.
 ``` bash
 kubectl create namespace etc
 ```
-and deploy operator here by applying InstallPlan, this will assure that etcd
+
+Note: If you want to operate on 'etc' namespace you need to pass namespace option to `kubectl`
+so it will look like `kubectl -n etc get pods`
+
+Deploy operator here by applying InstallPlan, this will assure that etcd
 operator is deployed to our etc namespaces and is watch its crd object.
 
 ``` yaml
+apiVersion: app.coreos.com/v1alpha1
 kind: InstallPlan-v1
 metadata:
   namespace: etc
@@ -121,7 +127,6 @@ spec:
   size: 3
   version: "3.2.13"
   repository: "docker.io/prgcont/etcd"
-EOF
 ```
 
 Verify the state of deployed etcd cluster
@@ -144,7 +149,7 @@ kubectl -n etc exec -it <POD_NAME> -- sh
 
 # In container:
 # Update env variable
-export etcdCTL_API=3
+export ETCDCTL_API=3
 
 # List etcd members 
 etcdctl member list
@@ -215,6 +220,8 @@ spec:
 Then we need to run following python code:
 
 ``` python
+import threading
+import time
 import yaml
 
 
@@ -362,11 +369,20 @@ and ``kubectl delete pod`` commands to test it).
 
 ## Operator Framework
 
-[Operator Framework](https://coreos.com/operators/) is set of tools that simplifies creation and lifecycle management of k8s operators.
+[Operator Framework](https://coreos.com/operators/) is set of tools that simplifies creation management of k8s operators.
 
 The operators created by Operator Framework are using same primitives like k8s controller which can be found in this diagram:
 
 ![Operator internals](./pic/operator_sdk_internals.jpeg "source: https://itnext.io/under-the-hood-of-the-operator-sdk-eebc8fdeebbf")
+
+This framework is really good choice if you are golang developer or your applications stack is golang based, its benefit for other apps
+maybe is not good enough to learn is as operator can be created in almost any language and it can still be managed by Lifecycle Operator
+Manager.
+
+Operator SDK helps you a lot with:
+* generating CRD for you
+* monitoring changes in CRD/Kubernetes cluster (you can register watchers and handlers easily)
+* package and deploy operator into cluster
 
 Advance task:
 * Try to follow the [tutorial](https://github.com/operator-framework/getting-started)
