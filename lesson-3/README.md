@@ -47,8 +47,8 @@ spec:
 ## Deploy etcd cluster
 
 We will now try to deploy etcd cluster into our Kubernetes. We will use etcd operator for it.
-As we want to do it properly we want our operator to by managed by a Lifecycle Operator. Lifecycle
-Operator enables you to manage your Operators inside Kuberentes clusters. It's mostly responsible for:
+As we want to do it properly we want our operator to be managed by a Lifecycle Operator. Lifecycle
+Operator enables management of operators inside Kuberentes clusters. It's mostly responsible for:
 
 * Deploying Operators into namespaces
 * Updating Operators
@@ -137,10 +137,10 @@ Tasks
 Exec into one etcd pod
 ```bash
 # Get arbitrary pod name using 
-# kubectl -n get po -l etcd_cluster=example-etcd-cluster
+kubectl -n etc get po -l etcd_cluster=example-etcd-cluster
 
 # Exec into etcd pod
-# kubectl -n etc exec -it <POD_NAME> -- sh
+kubectl -n etc exec -it <POD_NAME> -- sh
 
 # In container:
 # Update env variable
@@ -187,9 +187,11 @@ Note: You need to update RBAC rules if you want etcd operator to manage resource
 
 ## Write simple dummy Operator in Python
 
-We will try to create a very simple 'operator' in Python. IT will be able to schedule desired
-count of replicas of our Gordon up and it will be able to assure that desired count of replicas
-are runing.
+We will create a very simple 'operator' in Python. It will be responsible for:
+* monitoring changes in gordons.operator.prgcont.cz crd
+* it will schedule and maintain pods according to replicas key in the crd
+* it will register all the operated pods
+* it will report which pods belongs to which gordon cluster (instance of crd)
 
 We will start by defining crd which will be monitored by our operator.
 
@@ -261,7 +263,7 @@ def deploy(crd):
     replicas = crd['spec']['gordon']['replicas']
     name = crd['metadata']['name']
     if 'state' in crd:
-        print('[%s] Alerady exists!' % name)
+        print('[%s] Already exists!' % name)
         return
     else:
         crd['state'] = {}
