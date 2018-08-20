@@ -9,7 +9,7 @@
     - [Prometheus](#prometheus)
     - [Prometheus Service](#prometheus-service)
 - [Monitor your application](#monitor-your-application)
-- [Run Grafana]()
+- [Visualize metrics](#visualize-metrics)
 - [Prometheus Node Exporter]()
 
 ## Prerequisites
@@ -67,7 +67,7 @@ prometheus-config   1         25s
 [Here](https://github.com/prgcont/workshop-k8s/blob/master/src/prometheus/prometheus-deployment.yaml)
 is the Prometheus deployment that we're going to use during our workshop
 
-In the *metadata section*, we give the pod a label with a key of name and a value of prometheus.
+In the *metadata section*, we give the pod a label with a key of name and a value of Prometheus.
 This will come in handy later.
 
 In *annotations*, we set a couple of key/value pairs that will actually allow Prometheus
@@ -108,9 +108,14 @@ NAME         TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
 prometheus   NodePort   10.102.142.14   <none>        9090:30090/TCP   9s
 ```
 
-Now you can open prometheus UI via:
-```
+Now you can open Prometheus UI via:
+```bash
 minikube service prometheus -n monitoring
+```
+
+or find name of Prometheus pod (`kubectl -n prometheus get po`) and connect to pod directly
+```bash
+kubect -n monitoring port-forward paste_prometheus_pod_name 9090
 ```
 
 Click `Status -> Targets`and you should see the Kubernetes cluster and nodes. You should also see that Prometheus discovered itself under kubernetes-pods.
@@ -146,3 +151,84 @@ There is on alert prepared for monitoring kad application so you can take a look
 ## Tips
 
 * Reload prometheus configuration: `kill -HUP 1` in container
+
+
+## Visualize metrics
+
+Previous parts helped us to start Prometheus in Kubernetes and it's time to take a look at the metrics now. There are many ways to display the metrics and we will try two most used ones.
+
+### Prometheus UI graph
+
+Prometheus UI is bundled in Prometheus daemon and it can be used for basic visualization. It can be used for preparing queries but Grafana should be used for more serious work.
+
+Find name of Prometheus pod
+```bash
+kubectl -n monitoring get po
+NAME                         READY     STATUS    RESTARTS   AGE
+prometheus-647f4b785-lcdzc   1/1       Running   0          1d
+```
+
+Open port-forwaring to Prometheus pod, port 9090
+```bash
+kubectl -n monitoring port-forward prometheus-647f4b785-lcdzc 9090
+```
+
+Open [127.0.0.1:9090/graph](http://127.0.0.1:9090/graph) in web browser
+
+Let's show graph for container memory usage:
+
+1. Click on Graph
+1. Write expression: container_memory_usage_bytes
+1. Press execute - it can take some time if you have many containers running in a cluster
+
+However, query language is much more powerful. Try these expressions:
+* [`container_memory_usage_bytes{namespace="monitoring"}`](http://localhost:9090/graph?g0.range_input=1h&g0.expr=container_memory_usage_bytes%7Bnamespace%3D%22monitoring%22%7D&g0.tab=0)
+* [`kubernetes_build_info`](http://localhost:9090/graph?g0.range_input=1h&g0.expr=kubernetes_build_info&g0.tab=0)
+* [`go_goroutines{kubernetes_namespace="monitoring"}`](http://localhost:9090/graph?g0.range_input=1h&g0.expr=go_goroutines%7Bkubernetes_namespace%3D%22monitoring%22%7D&g0.tab=0)
+* [`predict_linear(node_filesystem_free_bytes[10m], 30*24*3600)`](http://localhost:9090/graph?g0.range_input=1h&g0.expr=predict_linear(node_filesystem_free_bytes%5B10m%5D%2C%2030*24*3600)&g0.tab=0)
+
+### Grafana
+
+Grafana is a tool for visualization and it can load data from many different backends, including Prometheus. Grafana dashboards can be create manually, auto-generated or imported from [Grafana.com Dashboards](https://grafana.com/dashboards). The goal of this part is to configure Prometheus datasource in grafana and explore some dashboard.
+
+First we need to start Grafana pod in monitoring namespace.
+```bash
+kubectl apply -f grafana-deployment.yaml
+```
+
+and check that grafana container is running:
+```bash
+kubectl -n monitoring get po
+NAME                         READY     STATUS    RESTARTS   AGE
+grafana-646f55c587-xlp2n     1/1       Running   0          4m
+```
+
+Open connection to grafana and don't forget to replace `grafana-646f55c587-xlp2n` with name of your grafana pod.
+```bash
+kubectl -n monitoring port-forward grafana-646f55c587-xlp2n 3000
+```
+
+Open [127.0.0.1:3000/](http://127.0.0.1:3000) in web browser
+
+
+We need to first configure data source which will enable grafana to read metrics from Prometheus:
+
+1. Login with username `admin` and password `admin`
+1. You will be asked to change password but it can be skipped
+1. Click `Add data source` and set 
+  * Name: prgcont
+  * Type:  Prometheus
+  * URL: http://prometheus:9090
+* Click "Save & Test"
+
+Next step is to add some dashboards which can be created manually but we will just import predefined dashboard:
+
+1. Move mouse over plus sign on top left side of page
+1. Click Import
+1. Write 6879 to field with title "Grafana.com Dashboard"
+1. Click Load
+1. Select Prometheus datasource prgcont
+1. Click import
+1. Discover provided graphs
+
+You can try to import [3662](https://grafana.com/dashboards/3662) and check Prometheus daemon usage.
