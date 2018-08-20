@@ -1,0 +1,23 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      name: grafana
+      labels:
+        app: grafana
+      annotations:
+        prometheus.io/scrape: "true"
+    spec:
+      containers:
+      - name: grafana
+        image: prgcont/grafana:5.2.2
+        ports:
+        - containerPort: 3000
