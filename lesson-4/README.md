@@ -8,6 +8,7 @@
     - [ConfigMap](#configmap)
     - [Prometheus](#prometheus)
     - [Prometheus Service](#prometheus-service)
+- [Monitor your application](#monitor-your-application)
 - [Run Grafana]()
 - [Prometheus Node Exporter]()
 
@@ -113,3 +114,35 @@ minikube service prometheus -n monitoring
 ```
 
 Click `Status -> Targets`and you should see the Kubernetes cluster and nodes. You should also see that Prometheus discovered itself under kubernetes-pods.
+
+## Monitor your application
+
+We will run sample application in our cluster and add this application to Prometheus monitoring. We will be using Prometheus service discovery which means that Prometheus will automatically discover our application and will start scraping it. The application is exporting metrics on `/metrics` endpoint.
+
+First step is to deploy the application:
+```bash
+kubectl apply -f kad.yaml
+```
+
+It will start on pod and create service targeting this pod. The most important part of service definition are the annotations. These annotations are processes by prometheus and service with these annotation is scraped.
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: kad
+  annotations:
+    prometheus.io/scrape: "true"
+```
+
+Next step is to verify Prometheus is scraping our application. There are several ways to verify it:
+* In Prometheus UI: Status -> Targets contains target with label `kubernetes_name="kad"`
+  ![Kad target](./images/kad-endpoints.png)
+* In Prometheus UI: Status -> Service discovery -> kubernetes-services endpoints discovered kad service
+* Run query in Prometheus UI: [`up{kubernetes_name="kad"}`](http://localhost:9090/graph?g0.range_input=1h&g0.expr=up%7Bkubernetes_name%3D%22kad%22%7D&g0.tab=1)
+
+There is on alert prepared for monitoring kad application so you can take a look at `Alerts` tab.
+
+## Tips
+
+* Reload prometheus configuration: `kill -HUP 1` in container
