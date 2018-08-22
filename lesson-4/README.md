@@ -215,19 +215,28 @@ We need to first configure data source which will enable grafana to read metrics
 
 1. Login with username `admin` and password `admin`
 1. You will be asked to change password but it can be skipped
-1. Click `Add data source` and set 
-  * Name: prgcont
-  * Type:  Prometheus
-  * URL: http://prometheus:9090
-* Click "Save & Test"
+1. Click `Add data source` and configure datasource according to screenshot below
+
+  ![Adding prometheus datasource](./images/datasource.png)
+1. Click "Save & Test", You should see "Datasource is working"
+
 
 Next step is to add some dashboards which can be created manually but we will just import predefined dashboard:
 
 1. Move mouse over plus sign on top left side of page
+
+  ![Find import menu](./images/import-plus.png)
+  
 1. Click Import
-1. Write 6879 to field with title "Grafana.com Dashboard"
+1. Write `6879` to field with title "Grafana.com Dashboard". This import feature can be used to import dashboard from JSON which is convenient way to export/load your dashboards.
+
+  ![Import from Grafana.com](./images/import-number.png)
+
 1. Click Load
-1. Select Prometheus datasource prgcont
+1. Select Prometheus datasource prgcont as depicted in screnshot
+
+  ![Configure imported dashboard](./images/import-config.png)
+
 1. Click import
 1. Discover provided graphs
 
