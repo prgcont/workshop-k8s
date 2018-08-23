@@ -129,7 +129,7 @@ First step is to deploy the application:
 kubectl apply -f kad.yaml
 ```
 
-It will start on pod and create service targeting this pod. The most important part of service definition are the annotations. These annotations are processes by prometheus and service with these annotation is scraped.
+It will start one pod and create service targeting this pod. The most important part of service definition are the annotations. These annotations are processes by prometheus and service with these annotation is scraped.
 
 ```yaml
 apiVersion: v1
@@ -146,7 +146,7 @@ Next step is to verify Prometheus is scraping our application. There are several
 * In Prometheus UI: Status -> Service discovery -> kubernetes-services endpoints discovered kad service
 * Run query in Prometheus UI: [`up{kubernetes_name="kad"}`](http://localhost:9090/graph?g0.range_input=1h&g0.expr=up%7Bkubernetes_name%3D%22kad%22%7D&g0.tab=1)
 
-There is on alert prepared for monitoring kad application so you can take a look at `Alerts` tab.
+There is an alert prepared for monitoring kad application so you can take a look at `Alerts` tab.
 
 ## Tips
 
@@ -159,7 +159,7 @@ Previous parts helped us to start Prometheus in Kubernetes and it's time to take
 
 ### Prometheus UI graph
 
-Prometheus UI is bundled in Prometheus daemon and it can be used for basic visualization. It can be used for preparing queries but Grafana should be used for more serious work.
+Prometheus UI is bundled in Prometheus daemon and it can be used for basic visualization. It's sufficient for preparing queries but Grafana is better for serious work.
 
 Find name of Prometheus pod
 ```bash
@@ -189,7 +189,7 @@ However, query language is much more powerful. Try these expressions:
 
 ### Grafana
 
-Grafana is a tool for visualization and it can load data from many different backends, including Prometheus. Grafana dashboards can be create manually, auto-generated or imported from [Grafana.com Dashboards](https://grafana.com/dashboards). The goal of this part is to configure Prometheus datasource in grafana and explore some dashboard.
+Grafana is a tool for visualization and it can load data from many different backends, including Prometheus. Grafana dashboards can be created manually, auto-generated or imported from [Grafana.com Dashboards](https://grafana.com/dashboards). The goal of this part is to configure Prometheus datasource in grafana and explore some dashboard.
 
 First we need to start Grafana pod in monitoring namespace.
 ```bash
@@ -233,7 +233,7 @@ Next step is to add some dashboards which can be created manually but we will ju
   ![Import from Grafana.com](./images/import-number.png)
 
 1. Click Load
-1. Select Prometheus datasource prgcont as depicted in screnshot
+1. Select Prometheus datasource prgcont as depicted in screenshot
 
   ![Configure imported dashboard](./images/import-config.png)
 
