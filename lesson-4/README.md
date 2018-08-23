@@ -10,7 +10,7 @@
     - [Prometheus Service](#prometheus-service)
 - [Monitor your application](#monitor-your-application)
 - [Visualize metrics](#visualize-metrics)
-- [Prometheus Node Exporter]()
+- [Prometheus Node Exporter](#prometheus-node-exporter)
 
 ## Prerequisites
 - `git clone https://github.com/prgcont/workshop-k8s && cd workshop-k8s/src/prometheus`
@@ -226,7 +226,7 @@ Next step is to add some dashboards which can be created manually but we will ju
 1. Move mouse over plus sign on top left side of page
 
   ![Find import menu](./images/import-plus.png)
-  
+
 1. Click Import
 1. Write `6879` to field with title "Grafana.com Dashboard". This import feature can be used to import dashboard from JSON which is convenient way to export/load your dashboards.
 
@@ -241,3 +241,29 @@ Next step is to add some dashboards which can be created manually but we will ju
 1. Discover provided graphs
 
 You can try to import [3662](https://grafana.com/dashboards/3662) and check Prometheus daemon usage.
+
+## Prometheus Node Exporter
+We can also use Prometheus to collect metrics of the nodes themselves.
+We use the **node exporter** for this. We can also use Kubernetes to deploy this
+to every node. We will use a [Kubernetes DaemonSet](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/) to do so.
+
+In `node-exporter-daemonset.yaml` you will see that it looks similar to the
+deployment we did earlier. Notice that we run this in privileged mode `privileged: true`
+as it needs access to various information about the node to perform monitoring.
+The `privileged: true` mode is simplification for the demo purpose, you should not
+use it in production.
+Also notice that we are mounting in a few node directories to monitor various things.
+
+To create the DaemonSet run
+```bash
+kubectl apply -f node-exporter-daemonset.yaml
+```
+This will run an instance of this on every node. In minikube, there is only one
+node, but you can run the same thing on your own kubernetes cluster and scale to
+thousand nodes.
+
+After a minute or so, Prometheus will discover the node itself and begin
+collecting metrics from it.
+
+**Tasks:**
+- Try to create a dashboard in Grafana using node metrics (use `node_load1` as the metric query)  
