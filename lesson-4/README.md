@@ -113,7 +113,7 @@ Now you can open Prometheus UI via:
 minikube service prometheus -n monitoring
 ```
 
-or find name of Prometheus pod (`kubectl -n prometheus get po`) and connect to pod directly
+or find name of Prometheus pod (`kubectl -n monitoring get po`) and connect to pod directly
 ```bash
 kubect -n monitoring port-forward paste_prometheus_pod_name 9090
 ```
