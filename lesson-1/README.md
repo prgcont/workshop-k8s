@@ -2,7 +2,7 @@
 
 The purpose of this workshop series is to get you on boarded to Kuberentes experience. We will guide you through deploying first applications,
 scaling them and accessing them from outside network via Ingress routing. We will also briefly touch data persistence which will help you to run
-simple statefull applications.
+simple stateful applications.
 
 Topics:
 
@@ -30,8 +30,8 @@ Topics:
   - [RC and Service](#rc-and-service)
   - [Multiple Services](#multiple-services)
   - [Configuring Ingress to Handle HTTPS traffic](#configuring-ingress-to-handle-https-traffic)
-  - [Bonus 1 - Mapping Different Services to Different Hosts](#bonus-1---mapping-different-services-to-different-hosts)
-  - [Bonus 2 - Use Minikube Addon to Enable Nginx Ingress](#bonus-2---use-minikube-addon-to-enable-nginx-ingress)
+  - [Bonus 1 - Mapping the Different Services to the Different Hosts](#bonus-1---mapping-the-different-services-to-the-different-hosts)
+  - [Bonus 2 - Step-by-step guide to Enable Nginx Ingress Addon in Minikube](#bonus-2---step-by-step-guide-to-enable-nginx-ingress-addon-in-minikube)
 
 ## Setup Minikube
 
@@ -59,20 +59,21 @@ Install Minikube according to the instructions for the [release 0.28.0](https://
 
 If you want to change the VM driver add the appropriate `--vm-driver=xxx` flag to `minikube start`.
 
-```
+```bash
 $ minikube start
 Starting local Kubernetes cluster...
 Running pre-create checks...
 Creating machine...
 Starting local Kubernetes cluster...
-
 ```
+
 ## Prepare Demo Application
 
 We're going to use a simple NodeJS application. The image is already pushed to DockerHub (`prgcont/gordon:v1.0`) but you should never-ever download and run unknown images from DockerHub, so let's build it instead.
 
 Here is the app:
-```
+
+```javascript
 const http = require('http');
 const os = require('os');
 
@@ -87,66 +88,76 @@ var handler = function(request, response) {
 var www = http.createServer(handler);
 www.listen(8080);
 ```
+
 If you're not familiar with NodeJS, this app basically answers with greetings and hostname to any request to port `8080`.
 
 Save it as `app-v1.js` and let's create a Dockerfile for it:
-```
+
+```dockerfile
 FROM node:10.5-slim
 ADD app-v1.js /app-v1.js
 EXPOSE 8080
 ENTRYPOINT ["node", "app-v1.js"]
 ```
+
 now build it:
-```
+
+```bash
 $ export REGISTRY_USER=<your_name>
 $ docker build -t ${REGISTRY_USER}/gordon:v1.0 .
 ```
+
 And push it either to DockerHub or to your favorite Docker registry.
 
 ! IMPORTANT - All source code is [here](https://github.com/prgcont/workshop-k8s/tree/master/src/ingress)
 
 ## Deploy Your First Application
 
-No as we have minikube and our application ready, we can deploy our application into minikube as easily as running following command:
-```
-$  kubectl run hello --image=${REGISTRY_USER}/gordon:v1.0 --port=8080 --expose
+Now we can deploy our application into minikube:
+
+```bash
+$ kubectl run hello --image=${REGISTRY_USER}/gordon:v1.0 --port=8080 --expose
 ```
 
 ### What Just Happened?
 
-We asked Kubernetes to deploy our previously build application and we hinted it, that it will be listening on port 8080 and we wanted it to be exposed to a cluster enabling
-load balancing to work.
+We asked Kubernetes to deploy our application and to expose port 8080 for it.
 
 ## How Can I Access My App?
 
 To access your app we will hook inside Kubernetes network via `kubectl proxy` command, so please open a new terminal and run
 
+```bash
+$ kubectl proxy
 ```
-$  kubectl proxy
-```
-! IMPORTANT - Do not stop proxy as following commands will not work.
 
-Than you can access your application via following command:
-```
-curl http://localhost:8001/api/v1/namespaces/default/services/hello/proxy/
+! IMPORTANT - Do not stop proxy as the following commands will not work !
+
+and can access your application via following command:
+
+```bash
+$ curl http://localhost:8001/api/v1/namespaces/default/services/hello/proxy/
+You've hit gordon v1, my name is hello-d878f6778-lxb5c
 ```
 
 ## Service
 
-Did you note a world `service` inside the url? Yes, we are using kubernetes service to access our application. You can see how the service object looks by running:
-```
-$  kubectl describe service hello
+Did you notice a word `service` inside the URL? Yes, we are using kubernetes service to access our application. You can see how the service object looks by running:
+
+```bash
+$ kubectl describe service hello
 ```
 
-Or you can list all other services by:
-```
-$  kubectl get services
+Or you can list all other services via:
+
+```bash
+$ kubectl get services
 ```
 
-Why service is there? The service is very important object in Kubernetes. Its an abstraction for your deployed applications. It helps you to discover your pods, to load balance them and
-many other scenarios. You can learn more in upstream [doc](https://kubernetes.io/docs/concepts/services-networking/service/). You can imagine it in a following way:
+Why Service is there? The Service is a very important object in Kubernetes. It's an abstraction for your deployed applications. It helps you to discover your pods, to load balance them and
+many other scenarios. You can learn more in upstream [doc](https://kubernetes.io/docs/concepts/services-networking/service/). You can imagine it in the following way:
 
-```
+```bash
 
     +-------+
     |service|
@@ -157,68 +168,66 @@ many other scenarios. You can learn more in upstream [doc](https://kubernetes.io
 +---+ +---+ +---+
 |pod| |pod| |pod|
 +---+ +---+ +---+
-
 ```
 
 ## Pod
 
-As you already know a group of containers running in a Kubernetes cluster is called `Pod`. So lets look which pods are running in our Kubernetes cluster by executing:
+As you already know, a group of containers running in a Kubernetes cluster is called `Pod`. So let's look which pods are running in our Kubernetes cluster by executing:
 
+```bash
+$ kubectl get pods
 ```
-$  kubectl get pods
 
-```
+You can see how the Pod is defined by executing (replace `<pod_name>` by Pod name from the previous output):
 
-You can see how the Pod is defined by executing (replace `<pod_name>` by Pod name from previous output):
-
-```
+```bash
 $ kubectl describe pod <pod_name>
 ```
 
 you can even access Pod directly via `curl` by:
 
+```bash
+$ export POD_NAME=$(kubectl get pods | grep hello | cut -f 1 -d ' ' | head -n 1)
+$ curl -L http://localhost:8001/api/v1/namespaces/default/pods/$POD_NAME/proxy/
+You've hit gordon v1, my name is <pod_name>
 ```
-$  export POD_NAME=$(kubectl get pods | grep hello | cut -f 1 -d ' ' | head -n 1)
-$  curl -L http://localhost:8001/api/v1/namespaces/default/pods/$POD_NAME/proxy/
-```
-
 
 ## Scaling Your Application
 
-As we deployed our application via `kubectl run` command, it was created using `deployment` object, we can view it via:
+As we deployed our application via `kubectl run` command, it was created using `deployment` object (learn more about Deployments in Kubernetes [here](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)), we can view it via:
 
-```
+```bash
 $  kubectl describe deployment hello
 ```
 
-Examine whole output, you can see a Pod template with our container image, and most important part for us a line with a word `Replicas`. This tells
+By examining the whole output of the previous command, you can see a Pod template with our container image, and the most important part for us is the line with the word `Replicas`. This tells
 Kubernetes how many instances of our application we want to have. We can scale our deployment by executing
 
-```
-$  kubectl scale --replicas=3 deployment/hello
+```bash
+$ kubectl scale --replicas=3 deployment/hello
 ```
 
-This will ask our Deployment to scale our application to 3 instances. The number of instances is guarded by ReplicaSet. You can list and describe ReplicaSets by following commands
+This will ask Kubernetes to scale up the deployment of our application to 3 instances. The number of instances is guarded by `ReplicaSet`. You can list and describe ReplicaSets by following commands
 (replace ... by name of your ReplicaSet):
 
+```bash
+$ kubectl get rs
+$ kubectl describe rs/...
 ```
-kubectl get rs
-kubectl describe rs/...
-```
-*note:* You can still find people using Replication Controllers instead of Replica Set which is outdated approach and you should avoid it as both object works almost same with ReplicaSets enabling you
-to use more advance [labels/selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) mechanisms.
 
+*note:* You can still find people using `ReplicationControllers` instead of `ReplicaSets` which is an outdated approach and you should avoid it as both object works almost the same way with `ReplicaSets` enabling you
+to use more advance [labels/selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) mechanisms.
 
 When we list pods again we should see 3 of them:
 
-```
-$  kubectl get pods
+```bash
+$ kubectl get pods
 ```
 
-And we can test, that all of the pods are being used by `curl` the service url (remember service is providing load balancing of pods) via:
+We can test that all of the pods are being used by `curl` the service url (remember service is providing load balancing of pods) via:
 
-```
-$  for i in $(seq 1 50); do curl http://localhost:8001/api/v1/namespaces/default/services/hello/proxy/; done
+```bash
+$ for i in $(seq 1 20); do curl http://localhost:8001/api/v1/namespaces/default/services/hello/proxy/; done
 ```
 
 ### Tasks
@@ -226,20 +235,19 @@ $  for i in $(seq 1 50); do curl http://localhost:8001/api/v1/namespaces/default
 1. How can service find its targeted pods?
 2. Run `minikube dashboard` and find all the objects we described using the Kubernetes Dashboard
 
-
 ## Persistent Storage
 
-In this chapter we will look how we can add a persistent storage to our applications. This topic is very important as a lot of outstanding
-application needs some storage access. We can argue, that we should not need any persistent storage and just consume API. But in real world
-you will face a need of providing file-system like storage for your pods. Persistent volumes are ussually network filesystems. You can see
-a list of supported providers at upstream [docs](https://kubernetes.io/docs/concepts/storage/volumes/#types-of-volumes)
+In this chapter, we will look at how can we add a persistent storage to our applications. This topic is very important as a lot of outstanding
+application needs some storage access. We can argue, that we should not need any persistent storage and just consume API. But in the real world
+you will face a need of providing file-system like storage for your pods. Persistent volumes are usually network filesystems. You can see
+a list of supported providers at [upstream docs](https://kubernetes.io/docs/concepts/storage/volumes/#types-of-volumes)
 
 ### Claiming Persistent Volumes
 
 Minikube comes with auto-provisioned persistent volumes, they are created as you ask for them. Any application which needs a persistent volume
-must claim it. You can do it, by creating Persistent Volume Claim by executing following command:
+must claim it. You can do it, by creating `PersistentVolumeClaim (PVC)` by executing the following command:
 
-```
+```bash
 cat <<EOF | kubectl create -f -
 kind: PersistentVolumeClaim
 apiVersion: v1
@@ -256,20 +264,20 @@ EOF
 
 Then you can list your newly created PVC by executing:
 
-```
-$  kubectl get pvc
-$  kubectl describe pvc testpvc
-```
-
-### Injecting PVC into Your Application.
-
-To inject our Persistent volume claim into our application we need to edit its "deployment" object by executing:
-
-```
-kubectl edit deployment hello
+```bash
+$ kubectl get pvc
+$ kubectl describe pvc testpvc
 ```
 
-than look for a following section:
+### Injecting PVC into Your Application
+
+To inject the PVC into our application we need to edit its "deployment" object by executing:
+
+```bash 
+$ kubectl edit deployment hello
+```
+
+then look for a following section:
 
 ``` yaml
 ...
@@ -287,7 +295,7 @@ than look for a following section:
 ...
 ```
 
-and change it to look like:
+and change it to:
 
 ``` yaml
       containers:
@@ -312,22 +320,24 @@ and change it to look like:
 
 Now we can select one pod and execute:
 
+```bash
+$ echo POD_NAME=$(kubectl get pods | grep hello | cut -f 1 -d ' ' | head -n 1)
+$ kubectl exec -ti $POD_NAME touch /srv/test_file
 ```
-kubectl exec -ti $POD_NAME touch /srv/test_file
 
-```
-Than you can check that other pods can see the data by executing following command for each pod:
+Than you can check that other pods can see the data by executing the following command for each pod:
 
+```bash
+$ for i in $(kubectl get pods | grep hello | cut -f 1 -d ' '); do kubectl exec -it  $i ls /srv; done
 ```
-kubectl exec -ti $POD_NAME ls /srv
-```
-and you should see test_file on every pod.
+
+you should see test_file on every pod.
 
 ### Tasks
 
-1. Scale your application to 0 replicas and run it again and show that data still persist
+1. Scale your application to 0 replicas and run it again and see that data still present
 2. Scale your application to 0 pod and recreate pvc, will data exist?
-3. Explain why its different outcome for first two tasks. You can look at PVC [lifecycle](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#lifecycle-of-a-volume-and-claim)
+3. Explain why there is a different outcome for previous tasks. You can look at PVC [lifecycle](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#lifecycle-of-a-volume-and-claim)
 
 ## Ingress Controller
 
@@ -359,251 +369,13 @@ An Ingress with no rules sends all traffic to a single default backend. Traffic 
 
 ### Nginx-Ingress and Defaultbackend
 
-You can just run ``minkube addons enable ingress`` or apply the following YAML file to acivate defaultbackend and nginx-ingress-controller:
-
-```YAML
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: nginx-ingress
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: nginx-ingress-serviceaccount
-  namespace: nginx-ingress
----
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRole
-metadata:
-  name: nginx-ingress-clusterrole
-rules:
-  - apiGroups:
-      - ""
-    resources:
-      - configmaps
-      - endpoints
-      - nodes
-      - pods
-      - secrets
-    verbs:
-      - list
-      - watch
-  - apiGroups:
-      - ""
-    resources:
-      - nodes
-    verbs:
-      - get
-  - apiGroups:
-      - ""
-    resources:
-      - services
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - "extensions"
-    resources:
-      - ingresses
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - ""
-    resources:
-        - events
-    verbs:
-        - create
-        - patch
-  - apiGroups:
-      - "extensions"
-    resources:
-      - ingresses/status
-    verbs:
-      - update
----
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: Role
-metadata:
-  name: nginx-ingress-role
-  namespace: nginx-ingress
-rules:
-  - apiGroups:
-      - ""
-    resources:
-      - configmaps
-      - pods
-      - secrets
-      - namespaces
-    verbs:
-      - get
-  - apiGroups:
-      - ""
-    resources:
-      - configmaps
-    resourceNames:
-      - "ingress-controller-leader-nginx"
-    verbs:
-      - get
-      - update
-  - apiGroups:
-      - ""
-    resources:
-      - configmaps
-    verbs:
-      - create
-  - apiGroups:
-      - ""
-    resources:
-      - endpoints
-    verbs:
-      - get
-      - create
-      - update
----
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: RoleBinding
-metadata:
-  name: nginx-ingress-role-nisa-binding
-  namespace: nginx-ingress
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: nginx-ingress-role
-subjects:
-  - kind: ServiceAccount
-    name: nginx-ingress-serviceaccount
-    namespace: nginx-ingress
----
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRoleBinding
-metadata:
-  name: nginx-ingress-clusterrole-nisa-binding
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: nginx-ingress-clusterrole
-subjects:
-  - kind: ServiceAccount
-    name: nginx-ingress-serviceaccount
-    namespace: nginx-ingress
-apiVersion: extensions/v1beta1
-kind: Deployment
-metadata:
-  name: default-http-backend
-  labels:
-    k8s-app: default-http-backend
-  namespace: nginx-ingress
-spec:
-  template:
-    metadata:
-      labels:
-        k8s-app: default-http-backend
-    spec:
-      terminationGracePeriodSeconds: 60
-      containers:
-      - name: default-http-backend
-        image: k8s.gcr.io/defaultbackend:1.3
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8080
-            scheme: HTTP
-          initialDelaySeconds: 30
-          timeoutSeconds: 5
-        ports:
-        - containerPort: 8080
-        resources:
-          limits:
-            cpu: 10m
-            memory: 20Mi
-          requests:
-            cpu: 10m
-            memory: 20Mi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: default-http-backend
-  namespace: default
-  labels:
-    k8s-app: default-http-backend
-spec:
-  ports:
-  - port: 80
-    targetPort: 8080
-  selector:
-    k8s-app: default-http-backend
----
-kind: ConfigMap
-apiVersion: v1
-data:
-  disable-ipv6: "true"
-  server-tokens: "false"
-metadata:
-  name: nginx-conf
-  namespace: nginx-ingress
-apiVersion: extensions/v1beta1
-kind: Deployment
-metadata:
-  name: nginx-ingress-controller
-  namespace: nginx-ingress
-spec:
-  selector:
-    matchLabels:
-        k8s-app: nginx-ingress-lb
-  template:
-    metadata:
-      labels:
-        k8s-app: nginx-ingress-lb
-      annotations:
-    spec:
-      hostNetwork: true
-      serviceAccountName: nginx-ingress-serviceaccount
-      containers:
-        - name: nginx-ingress-controller
-          image: quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.15.0
-          env:
-             - name: POD_NAME
-               valueFrom:
-                 fieldRef:
-                   fieldPath: metadata.name
-             - name: POD_NAMESPACE
-               valueFrom:
-                 fieldRef:
-                   fieldPath: metadata.namespace
-          args:
-             - /nginx-ingress-controller
-             - --default-backend-service=default/default-http-backend
-             - --default-ssl-certificate=$(POD_NAMESPACE)/tls-certificate
-             - --ingress-class=nginx
-             - --configmap=$(POD_NAMESPACE)/nginx-conf
-          ports:
-          - containerPort: 80
-            hostPort: 80
-          - containerPort: 443
-            hostPort: 443
-          readinessProbe:
-            httpGet:
-              path: /healthz
-              port: 10254
-              scheme: HTTP
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: 10254
-              scheme: HTTP
-            initialDelaySeconds: 10
-            timeoutSeconds: 1
-```
+Run ``minikube addons enable ingress`` to activate defaultbackend and nginx-ingress-controller:
 
 ### Simple Application
 
 Conceptually, our setup should look like this:
-```
+
+```bash
     internet
         |
    [ ingress ]
@@ -617,9 +389,10 @@ Conceptually, our setup should look like this:
 
 ### RC and Service
 
-Now let's create a ReplicationController and a service: they will be used by Ingress
-```
-$ cat <<EOF | kubectl create -f -
+Now let's create a ReplicationController and a Service: they will be used by Ingress
+
+```bash
+cat <<EOF | kubectl create -f -
 apiVersion: v1
 kind: ReplicationController
 metadata:
@@ -633,7 +406,7 @@ spec:
         app: gordon-v1
     spec:
       containers:
-      - image: <your_name>/gordon:v1.0
+      - image: prgcont/gordon:v1.0
         name: nodejs
         imagePullPolicy: Always
 ---
@@ -649,18 +422,10 @@ spec:
     targetPort: 8080
 EOF
 ```
-Don’t forget to change the image in the YAML file to your docker image:
 
-```
-...
-containers:
-- image: <name_of_your_image_goes_here>
-  name: nodejs
-...
-```
 Check that service is up and running:
 
-```
+```bash
 $  kubectl get svc
 NAME                TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
 gordon-service-v1   ClusterIP   10.111.33.157   <none>        80/TCP    1d
@@ -669,17 +434,17 @@ kubernetes          ClusterIP   10.96.0.1       <none>        443/TCP   6d
 
 Great, now let's create our first version of ingress:
 
-```
-$ cat <<EOF | kubectl create -f -
+```bash
+cat <<EOF | kubectl create -f -
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: gordon
 spec:
   rules:
-  # this ingress maps the gordon.example.com domain name to our service
-  # you have to add gordon.example.com to /etc/hosts
-  - host: gordon.example.com
+  # this ingress maps the gordon.example.lan domain name to our service
+  # you have to add gordon.example.lan to /etc/hosts
+  - host: gordon.example.lan
     http:
       paths:
       # all requests will be sent to port 80 of the gordon service
@@ -693,21 +458,22 @@ EOF
 To be able to access the ingress from the outside we’ll need to make sure the hostname resolves to the IP of the ingress controller.
 We can do it via:
 
-- adding the hostname gordon.example.com into /etc/hosts (don't forget to delete it afterwards!)
-- changing the hostname `gordon.example.com` to `gordon.example.com.<minikube's_ip>.nip.io` in the previous YAML file - it will use [nip.io](http://nip.io/) service for resolving the hostname
+- adding the hostname gordon.example.lan into /etc/hosts (don't forget to delete it afterwards!)
+- changing the hostname `gordon.example.lan` to `gordon.example.lan.<minikube's_ip>.nip.io` in the previous YAML file - it will use [nip.io](http://nip.io/) service for resolving the hostname
 - in case of production applications we will need to set up DNS resolving properly.
 
 Check that ingress is available:
-```
+
+```bash
 $ kubectl get ing
 NAME      HOSTS                ADDRESS        PORTS     AGE
-gordon    gordon.example.com   192.168.64.8   80        1h
+gordon    gordon.example.lan   <some_ip_address_here>   80        1h
 ```
 
 Let's test our ingress:
 
-```
-$ for i in {1..10}; do curl http://gordon.example.com/v1; done
+```bash
+$ for i in {1..10}; do curl http://gordon.example.lan/v1; done
 You've hit gordon v1, my name is gordon-v1-z99d6
 You've hit gordon v1, my name is gordon-v1-btkvr
 You've hit gordon v1, my name is gordon-v1-64hhw
@@ -720,10 +486,10 @@ You've hit gordon v1, my name is gordon-v1-64hhw
 You've hit gordon v1, my name is gordon-v1-z99d6
 ```
 
-If you will try to request http://gordon.example.com it will give you a default backend's 404:
+If you will try to request http://gordon.example.lan it will give you a default backend's 404:
 
-```
-$ curl http://gordon.example.com
+```bash
+$ curl http://gordon.example.lan
 default backend - 404
 ```
 
@@ -735,7 +501,7 @@ The biggest advantage of using ingresses is their ability to expose multiple ser
 
 Let's create a second app, it's, basically, the same application with the slightly different output:
 
-```
+```javascript
 const http = require('http');
 const os = require('os');
 
@@ -752,20 +518,25 @@ www.listen(8080);
 ```
 
 Save it as `app-v2.js` and let's build from the following Dockerfile:
-```
+
+```dockerfile
 FROM node:10.5-slim
 ADD app-v2.js /app-v2.js
 ENTRYPOINT ["node", "app-v2.js"]
 ```
+
 Build it:
+
+```bash
+$ docker build -t <your_name>/gordon:v2.0 .
 ```
-$ docker build -t <your_name>/gordon:v2.0
-```
-And push it either DockerHub (don't forget to tag it accordingly).
+
+And push it to DockerHub (don't forget to tag it accordingly).
 
 Let's create a second ReplicationController and a Service:
-```
-$ cat <<EOF | kubectl create -f -
+
+```bash
+cat <<EOF | kubectl create -f -
 apiVersion: v1
 kind: ReplicationController
 metadata:
@@ -779,7 +550,7 @@ spec:
         app: gordon-v2
     spec:
       containers:
-      - image: <your_name>/gordon:v2.0
+      - image: prgcont/gordon:v2.0
         name: nodejs
         imagePullPolicy: Always
 ---
@@ -795,10 +566,10 @@ spec:
     targetPort: 8080
 EOF
 ```
-Again, don’t forget to change the `image` in the YAML file to your docker image.
 
 Let's check our services:
-```
+
+```bash
 $ kubectl get svc
 NAME                   TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE
 default-http-backend   ClusterIP   10.98.23.177     <none>        80/TCP    1h
@@ -806,18 +577,20 @@ gordon-service-v1      ClusterIP   10.108.177.42    <none>        80/TCP    1h
 gordon-service-v2      ClusterIP   10.105.110.160   <none>        90/TCP    1h
 kubernetes             ClusterIP   10.96.0.1        <none>        443/TCP   4d
 ```
-And here is our new ingress YAML file:
-```
-$ cat <<EOF | kubectl create -f -
+
+And here is our new ingress YAML file (don't forget to remove the old one: `kubectl delete ingress gordon`):
+
+```bash
+cat <<EOF | kubectl create -f -
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: gordon
 spec:
   rules:
-  # this ingress maps the gordon.example.com domain name to our service
-  # you have to add gordon.example.com to /etc/hosts
-  - host: gordon.example.com
+  # this ingress maps the gordon.example.lan domain name to our service
+  # you have to add gordon.example.lan to /etc/hosts
+  - host: gordon.example.lan
     http:
       paths:
       - path: /v1
@@ -830,43 +603,48 @@ spec:
           servicePort: 90
 EOF
 ```
-*Don't forget to change the line `  - host: gordon.example.com` in case you're using nip.io service for resolving*
+
+*Don't forget to change the line `  - host: gordon.example.lan` in case you're using nip.io service for resolving*
 
 Let's test it:
-```
-$ for i in {1..5}; do curl http://gordon.example.com/v1; done
+
+```bash
+$ for i in {1..5}; do curl http://gordon.example.lan/v1; done
 You've hit gordon v1, my name is gordon-v1-btkvr
 You've hit gordon v1, my name is gordon-v1-64hhw
 You've hit gordon v1, my name is gordon-v1-z99d6
 You've hit gordon v1, my name is gordon-v1-btkvr
 You've hit gordon v1, my name is gordon-v1-64hhw
 
-$ for i in {1..5}; do curl http://gordon.example.com/v2; done
+$ for i in {1..5}; do curl http://gordon.example.lan/v2; done
 Hey, I'm the next version of gordon; my name is gordon-v2-g6pll
 Hey, I'm the next version of gordon; my name is gordon-v2-c78bh
 Hey, I'm the next version of gordon; my name is gordon-v2-jn25s
 Hey, I'm the next version of gordon; my name is gordon-v2-g6pll
 Hey, I'm the next version of gordon; my name is gordon-v2-c78bh
 ```
+
 It works!
 
 ### Configuring Ingress to Handle HTTPS Traffic
 
 Currently, the Ingress can handle incoming HTTPS connections, but it terminates the TLS connection and sends requests to the services unencrypted.
 Since the Ingress terminates the TLS connection, it needs a TLS certificate and private key to do that.
-The two need to be stored in a Kubernetes resource called a Secret.
+The two need to be stored in a Kubernetes resource called a `Secret`.
 
 Create a certificate, a key and save them into Kubernetes Secret:
-```
+
+```bash
 $ openssl genrsa -out tls.key 2048
-$ openssl req -new -x509 -key tls.key -out tls.cert -days 360 -subj '/CN=gordon.example.com'
+$ openssl req -new -x509 -key tls.key -out tls.cert -days 360 -subj '/CN=gordon.example.lan'
 $ kubectl create secret tls tls-secret --cert=tls.cert --key=tls.key
 secret "tls-secret" created
 ```
 
-Now let's change our ingress:
-```
-$ cat <<EOF | kubectl create -f -
+Here is the "TLS" version of our ingress (again, don't forget to remove the old one: `kubectl delete ingress gordon`):
+
+```bash
+cat <<EOF | kubectl create -f -
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -874,12 +652,12 @@ metadata:
 spec:
   tls:
   - hosts:
-    - gordon.example.com
+    - gordon.example.lan
     secretName: tls-secret
   rules:
-  # this ingress maps the gordon.example.com domain name to our service
-  # you have to add gordon.example.com to /etc/hosts
-  - host: gordon.example.com
+  # this ingress maps the gordon.example.lan domain name to our service
+  # you have to add gordon.example.lan to /etc/hosts
+  - host: gordon.example.lan
     http:
       paths:
       - path: /v1
@@ -892,11 +670,13 @@ spec:
           servicePort: 90
 EOF
 ```
-*Don't forget to change the line `  - host: gordon.example.com` in case you're using nip.io service for resolving*
+
+*Don't forget to change the line `  - host: gordon.example.lan` in case you're using nip.io service for resolving*
 
 Let's test it:
-```
-$ curl http://gordon.example.com/v1
+
+```bash
+$ curl http://gordon.example.lan/v1
 <html>
 <head><title>308 Permanent Redirect</title></head>
 <body bgcolor="white">
@@ -906,47 +686,48 @@ $ curl http://gordon.example.com/v1
 </html>
 
 
-$ curl -k https://gordon.example.com/v1
+$ curl -k https://gordon.example.lan/v1
 You've hit gordon v1, my name is gordon-v1-64hhw
 ```
 
-### Bonus 1 - Mapping Different Services to Different Hosts
+### Bonus 1 - Mapping the Different Services to the Different Hosts
 
-Requests received by the controller will be forwarded to either service `foo` or `bar`, depending on the Host header in the request (exactly like how virtual hosts are handled in web servers).
-Of course, DNS needs to point both the `foo.example.com` and the `bar.example.com` domain names to the Ingress controller’s IP address.
+Requests received by the controller will be forwarded to either service `foo` or `bar`, depending on the Host header in the request (exactly like how virtual hosts are handled in the web servers).
+Of course, DNS needs to point both the `foo.example.lan` and the `bar.example.lan` domain names to the Ingress controller’s IP address.
 
 Example:
-```
+
+```yaml
 ...
 spec:
   rules:
-  - host: foo.example.com
+  - host: foo.example.lan
     http:
       paths:
-      - path: /                
+      - path: /
         backend:
           serviceName: foo
-          servicePort: 80      
-  - host: bar.example.com
+          servicePort: 80
+  - host: bar.example.lan
     http:
       paths:
-      - path: /                
+      - path: /
         backend:
           serviceName: bar
           servicePort: 80
 ...
 ```
 
-### Bonus 2 - Use Minikube Addon to Enable Nginx Ingress
+### Bonus 2 - Step-by-step guide to Enable Nginx Ingress Addon in Minikube
 
-```
+```bash
 $ minikube status
 minikube: Running
 cluster: Running
 kubectl: Correctly Configured: pointing to minikube-vm at 192.168.64.8
 ```
 
-```
+```bash
 $ minikube addons list
 - addon-manager: enabled
 - coredns: disabled
@@ -962,8 +743,10 @@ $ minikube addons list
 - registry-creds: disabled
 - storage-provisioner: enabled
 ```
+
 As you can see, **ingress** add-on is disabled, let’s enable it:
-```
+
+```bash
 $ minikube addons enable ingress
 ingress was successfully enabled
 ```
@@ -971,7 +754,8 @@ ingress was successfully enabled
 Wait for a minute and then check that your cluster runs both nginx and default-http-backend:
 
 nginx:
-```
+
+```bash
 $ kubectl get all --all-namespaces | grep nginx
 kube-system   deploy/nginx-ingress-controller   1         1         1            1           1h
 kube-system   rs/nginx-ingress-controller-67956bf89d   1         1         1         1h
@@ -979,7 +763,8 @@ kube-system   po/nginx-ingress-controller-67956bf89d-dbbl4   1/1       Running  
 ```
 
 default-backend:
-```
+
+```bash
 $ kubectl get all --all-namespaces | grep default-http-backend
 kube-system   deploy/default-http-backend       1         1         1            1           1h
 kube-system   rs/default-http-backend-59868b7dd6       1         1         1         1h
