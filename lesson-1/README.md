@@ -11,6 +11,7 @@ Topics:
   - [Install Kubectl](#install-kubectl)
   - [Install Minikube](#install-minikube)
   - [Run Minikube](#run-minikube)
+  - [External Kubernetes Cluster](#external-kubernetes-cluster)
 - [Prepare Demo Application](#prepare-demo-application)
 - [Deploy Your First Application](#deploy-your-first-application)
   - [What Just Happened?](#what-just-happened)
@@ -65,6 +66,28 @@ Starting local Kubernetes cluster...
 Running pre-create checks...
 Creating machine...
 Starting local Kubernetes cluster...
+```
+
+And the last thing, export kubernetes username via:
+
+```bash
+$ export KUBERNETES_USER=default
+```
+
+### External Kubernetes Cluster
+
+Instead of Minikube, you can use specially created Kubernetes cluster provided by instructor.
+Kubeconfigs will be destributed in the beginning of the workshop.
+Don't forget to point your `KUBECONFIG` environment variable to this Kubeconfig. 
+
+```bash
+$ export KUBECONFIG=<path_to_kubeconfig>
+```
+
+and to export your kubernetes username via:
+
+```bash
+$ export KUBERNETES_USER=<user_from_kubeconfig>
 ```
 
 ## Prepare Demo Application
@@ -129,14 +152,15 @@ To access your app we will hook inside Kubernetes network via `kubectl proxy` co
 
 ```bash
 $ kubectl proxy
+Starting to serve on 127.0.0.1:8001
 ```
 
 ! IMPORTANT - Do not stop proxy as the following commands will not work !
 
-and can access your application via following command:
+you can access your application via following command
 
 ```bash
-$ curl http://localhost:8001/api/v1/namespaces/default/services/hello/proxy/
+$ curl http://localhost:8001/api/v1/namespaces/$KUBERNETES_USER/services/hello/proxy/
 You've hit gordon v1, my name is hello-d878f6778-lxb5c
 ```
 
@@ -188,7 +212,7 @@ you can even access Pod directly via `curl` by:
 
 ```bash
 $ export POD_NAME=$(kubectl get pods | grep hello | cut -f 1 -d ' ' | head -n 1)
-$ curl -L http://localhost:8001/api/v1/namespaces/default/pods/$POD_NAME/proxy/
+$ curl -L http://localhost:8001/api/v1/namespaces/$KUBERNETES_USER/pods/$POD_NAME/proxy/
 You've hit gordon v1, my name is <pod_name>
 ```
 
@@ -227,7 +251,7 @@ $ kubectl get pods
 We can test that all of the pods are being used by `curl` the service url (remember service is providing load balancing of pods) via:
 
 ```bash
-$ for i in $(seq 1 20); do curl http://localhost:8001/api/v1/namespaces/default/services/hello/proxy/; done
+$ for i in $(seq 1 20); do curl http://localhost:8001/api/v1/namespaces/$KUBERNETES_USER/services/hello/proxy/; done
 ```
 
 ### Tasks
@@ -369,7 +393,8 @@ An Ingress with no rules sends all traffic to a single default backend. Traffic 
 
 ### Nginx-Ingress and Defaultbackend
 
-Run ``minikube addons enable ingress`` to activate defaultbackend and nginx-ingress-controller:
+In case of minikube run ``minikube addons enable ingress`` to activate defaultbackend and nginx-ingress-controller:
+In case of External Kubernetes Cluster - you already have Nginx Ingress controller.
 
 ### Simple Application
 
@@ -472,6 +497,8 @@ gordon    gordon.example.lan   <some_ip_address_here>   80        1h
 
 Let's test our ingress:
 
+if you use Minikube run
+
 ```bash
 $ for i in {1..10}; do curl http://gordon.example.lan/v1; done
 You've hit gordon v1, my name is gordon-v1-z99d6
@@ -484,6 +511,21 @@ You've hit gordon v1, my name is gordon-v1-z99d6
 You've hit gordon v1, my name is gordon-v1-btkvr
 You've hit gordon v1, my name is gordon-v1-64hhw
 You've hit gordon v1, my name is gordon-v1-z99d6
+```
+
+! IMPORTANT In case of the External Kubernetes Cluster you will need to specify the port, for example:
+
+```bash
+for i in {1..10}; do curl http://gordon.example.lan:32132/v1; done
+You've hit gordon v1, my name is gordon-v1-52nkj
+You've hit gordon v1, my name is gordon-v1-2hq2b
+You've hit gordon v1, my name is gordon-v1-68pvg
+You've hit gordon v1, my name is gordon-v1-52nkj
+You've hit gordon v1, my name is gordon-v1-2hq2b
+You've hit gordon v1, my name is gordon-v1-68pvg
+You've hit gordon v1, my name is gordon-v1-52nkj
+You've hit gordon v1, my name is gordon-v1-2hq2b
+You've hit gordon v1, my name is gordon-v1-68pvg
 ```
 
 If you will try to request http://gordon.example.lan it will give you a default backend's 404:
@@ -606,7 +648,7 @@ EOF
 
 *Don't forget to change the line `  - host: gordon.example.lan` in case you're using nip.io service for resolving*
 
-Let's test it:
+Let's test it (don't forget to specify the port in case of External Kubernetes Cluster):
 
 ```bash
 $ for i in {1..5}; do curl http://gordon.example.lan/v1; done
@@ -673,7 +715,7 @@ EOF
 
 *Don't forget to change the line `  - host: gordon.example.lan` in case you're using nip.io service for resolving*
 
-Let's test it:
+Let's test it (don't forget to specify the port in case of External Kubernetes Cluster):
 
 ```bash
 $ curl http://gordon.example.lan/v1
