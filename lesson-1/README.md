@@ -295,6 +295,15 @@ $ kubectl describe pvc testpvc
 
 ### Injecting PVC into Your Application
 
+**!!!Note**: In case you are running in shared DO cluster add selector to force all pods to start on single node only, e.g.:
+```
+spec:
+  template:
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: worker-01
+```
+
 To inject the PVC into our application we need to edit its "deployment" object by executing:
 
 ```bash 
