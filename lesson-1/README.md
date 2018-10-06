@@ -345,7 +345,7 @@ and change it to:
 Now we can select one pod and execute:
 
 ```bash
-$ echo POD_NAME=$(kubectl get pods | grep hello | cut -f 1 -d ' ' | head -n 1)
+$ export POD_NAME=$(kubectl get pods | grep hello | cut -f 1 -d ' ' | head -n 1)
 $ kubectl exec -ti $POD_NAME touch /srv/test_file
 ```
 
