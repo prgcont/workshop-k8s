@@ -1,0 +1,34 @@
+* Prgcont Kubernetes Workshops
+  :PROPERTIES:
+  :CUSTOM_ID: prgcont-kubernetes-workshops
+  :END:
+
+Set of exercises for Kubernetes workshops organized by prgcont.cz
+community.
+
+** Exercises
+   :PROPERTIES:
+   :CUSTOM_ID: exercises
+   :END:
+
+- [[./lesson-1/][Kubernetes 101]] Introduction of kubernetes concepts:
+
+  - starting kubernetes cluster in minikube
+  - running first application
+  - persistent storage intro
+  - kubernetes ingress (exposing application)
+
+- [[./lesson-2/][Kubernetes Scheduling]] Writing and using custom
+  kubernetes scheduler.
+- [[./lesson-3/][Kubernetes Operators]] Extending kubernetes
+  functionality using Custom Resource Definitions (CRD) and kubernetes
+  operators.
+- [[./lesson-4/][Monitoring on Kubernetes]] Using Prometheus to monitor
+  kubernetes ecosystem and applications running on it.
+
+** License
+   :PROPERTIES:
+   :CUSTOM_ID: license
+   :END:
+
+[[./LICENSE][Apache License Version 2]]
