@@ -15,6 +15,21 @@ how to run more sophisticated deployments and will show you how you can use pyth
   - [Moving Your Scheduler Inside of Your Cluster](#moving-your-scheduler-inside-of-your-cluster)
 - [DaemonSets](#daemonsets)
 
+## Setup 
+
+export kubernetes username via:
+
+If using minikube, export use:
+```bash
+$ export KUBERNETES_USER=default
+```
+
+If using kubernetes cluster provided by instructor, use
+```bash
+$ export KUBERNETES_USER=<YOUR_CUSTOM_USERNAME>
+```
+
+
 ## StatefulSets
 
 StatefulSets are the way of how to run your stateful application inside of Kubernetes.
@@ -96,13 +111,13 @@ $  kubectl proxy
 Now you can try to access your application via service.
 
 ```bash 
-$ curl http://localhost:8001/api/v1/namespaces/default/services/gordon/proxy/
+$ curl http://localhost:8001/api/v1/namespaces/${KUBERNETES_USER}/services/gordon/proxy/
 ```
 
 **and this will fail**. We can now try to access our pods via:
 
 ```bash 
-$ curl http://localhost:8001/api/v1/namespaces/default/pods/webgordon-1/proxy/
+$ curl http://localhost:8001/api/v1/namespaces/${KUBERNETES_USER}/pods/webgordon-1/proxy/
 ```
 
 So how can I access my app? If you are running stateful application you probably don't want to have any automatic load balancing and you can use predictable DNS record for any pod. We can try it by executing shell inside of our container and curling another one:
@@ -152,6 +167,7 @@ We will now create a pod which will tell Kubernetes to wait for our custom
 scheduler. You can do it by feeding Kubernetes with following YAML:
 
 ```yaml
+kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Pod
 metadata:
@@ -161,6 +177,7 @@ spec:
   containers:
   - name: hello
     image: ${REGISTRY_USER}/gordon:v1.0
+EOF
 ```
 
 Now if we will run `kubectl get pods` we'll see our pod stuck in a `Pending` state. This is the
@@ -176,12 +193,12 @@ from kubernetes import client, config, watch
 # Following line is sourcing your ~/.kube/config so you are authenticated same way
 # as kubectl is
 config.load_kube_config()
-v1=client.CoreV1Api()
-
+v1 = client.CoreV1Api()
+namespace = config.list_kube_config_contexts()[1]["context"]["namespace"]
 
 def main():
     w = watch.Watch()
-    for event in w.stream(v1.list_namespaced_pod, "default"):
+    for event in w.stream(v1.list_namespaced_pod, namespace):
         print("pod: '%s', phase: '%s'." % (event['object'].metadata.name,
                                            event['object'].status.phase))
                    
@@ -200,7 +217,7 @@ You should see your pod in the `Pending` state.
 To be able to schedule our pod we will create a simple Schedule function:
 
 ```python
-def scheduler(name, node, namespace="default"):
+def scheduler(name, node, namespace=namespace):
         
     target=client.V1ObjectReference()
     target.kind = "Node"
@@ -220,7 +237,7 @@ and adjust our main function to look like:
 ```python
 def main():
     w = watch.Watch()
-    for event in w.stream(v1.list_namespaced_pod, "default"):
+    for event in w.stream(v1.list_namespaced_pod, namespace):
         print("pod: '%s', phase: '%s' %s." % (event['object'].metadata.name,
                                            event['object'].status.phase,
                                            event['object'].spec.scheduler_name))
@@ -246,13 +263,16 @@ To move your scheduler to be run inside your Kubernetes cluster you need to chan
 ```python
 from kubernetes import client, config, watch
 
+# Following line is sourcing your ~/.kube/config so you are authenticated same way
+# as kubectl is
+config.load_kube_config()
+namespace = config.list_kube_config_contexts()[1]["context"]["namespace"]
+print("Namespace from kubeconfig: {}".format(namespace))
 
-# following line authenticate you inside the cluster
-config.load_incluster_config()
-v1=client.CoreV1Api()
+v1 = client.CoreV1Api()
 
 
-def scheduler(name, node, namespace="default"):
+def scheduler(name, node):
 
     target=client.V1ObjectReference()
     target.kind = "Node"
@@ -268,20 +288,19 @@ def scheduler(name, node, namespace="default"):
 
 def main():
     w = watch.Watch()
-    for event in w.stream(v1.list_namespaced_pod, "default"):
+    for event in w.stream(v1.list_namespaced_pod, namespace):
         print("pod: '%s', phase: '%s' %s." % (event['object'].metadata.name,
                                            event['object'].status.phase,
                                            event['object'].spec.scheduler_name))
         if event['object'].status.phase == "Pending" and event['object'].spec.scheduler_name == "PrgContSched":
             try:
-                res = scheduler(event['object'].metadata.name, 'minikube')
+                res = scheduler(event['object'].metadata.name, 'worker-01')
             except Exception as ex:
                 print(ex)
 
 
 if __name__ == '__main__':
     main()
-
 ```
 
 ### Tasks
@@ -303,7 +322,7 @@ To create a DaemonSet please feed following object to a Kubernetes cluster. Don'
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: gorgon
+  name: gordon
 spec:
   selector:
     matchLabels:

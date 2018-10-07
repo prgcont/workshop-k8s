@@ -295,6 +295,15 @@ $ kubectl describe pvc testpvc
 
 ### Injecting PVC into Your Application
 
+**!!!Note**: In case you are running in shared DO cluster add selector to force all pods to start on single node only, e.g.:
+```
+spec:
+  template:
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: worker-01
+```
+
 To inject the PVC into our application we need to edit its "deployment" object by executing:
 
 ```bash 
@@ -345,7 +354,7 @@ and change it to:
 Now we can select one pod and execute:
 
 ```bash
-$ echo POD_NAME=$(kubectl get pods | grep hello | cut -f 1 -d ' ' | head -n 1)
+$ export POD_NAME=$(kubectl get pods | grep hello | cut -f 1 -d ' ' | head -n 1)
 $ kubectl exec -ti $POD_NAME touch /srv/test_file
 ```
 
@@ -459,6 +468,8 @@ kubernetes          ClusterIP   10.96.0.1       <none>        443/TCP   6d
 
 Great, now let's create our first version of ingress:
 
+**!!!Note**: Namespace your `path` to your namespace name, e.g. `path: /<NAMESPACE>/v1` in case you use shared exercise cluster.
+
 ```bash
 cat <<EOF | kubectl create -f -
 apiVersion: extensions/v1beta1
@@ -484,7 +495,8 @@ To be able to access the ingress from the outside we’ll need to make sure the 
 We can do it via:
 
 - adding the hostname gordon.example.lan into /etc/hosts (don't forget to delete it afterwards!)
-- changing the hostname `gordon.example.lan` to `gordon.example.lan.<minikube's_ip>.nip.io` in the previous YAML file - it will use [nip.io](http://nip.io/) service for resolving the hostname
+- changing the hostname `gordon.example.lan` to `gordon.example.lan.<CLUSTER_IP>.nip.io` in the previous YAML file - it will use [nip.io](http://nip.io/) service for resolving the hostname
+  - where `CLUSTER_IP` is either your minikube ip or LB IP provided by instructors.
 - in case of production applications we will need to set up DNS resolving properly.
 
 Check that ingress is available:
