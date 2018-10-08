@@ -5,11 +5,22 @@
 
 ** Topics                                                         :TOC_2_gh:
 - [[#kubernetes-operators][Kubernetes Operators]]
+  - [[#custom-resource-definition][Custom Resource Definition]]
   - [[#kubernetes-custom-resource-definition][Kubernetes Custom Resource Definition]]
   - [[#deploy-etcd-cluster][Deploy etcd cluster]]
   - [[#write-simple-dummy-operator-in-python][Write simple dummy Operator in Python]]
   - [[#operator-framework][Operator Framework]]
 
+** Custom Resource Definition
+#+CAPTION: Simple overview of adding Kuberentes Operator to cluster
+#+NAME:   fig: k8s_operator
+[[./pic/kubernetes_operators.jpg]]
+
+1. User creates *CustomResourceDefinition* named *EtcdCluster* - this adds new API Endpoint in k8s cluster.
+2. Create *EtcdOperator* which reacts to objects on new API Server endpoint.
+3. Create Custom Resource (CR) - unique instance of *EtcdCluster*.
+4. *EtcdOperator* reacts on new object *awesomeETCD* and spawns pods in k8s according to definition in CR.
+ 
 ** Kubernetes Custom Resource Definition
    :PROPERTIES:
    :CUSTOM_ID: kubernetes-custom-resource-definition
