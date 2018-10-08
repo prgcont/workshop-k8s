@@ -87,23 +87,22 @@ You can read more about [[https://github.com/prgcont/operator-lifecycle-manager/
 
 #+BEGIN_SRC sh
 git clone https://github.com/prgcont/operator-lifecycle-manager
-cd operator-lifecycle-manager
-kubectl apply -f deploy/upstream/manifests/0.5.0
+kubectl create -f operator-lifecycle-manager/deploy/upstream/manifests/0.7.1
 #+END_SRC
 
 Check that Operator Lifecycle Manager is up and running:
 
 #+BEGIN_SRC sh
-    kubectl -n kube-system get pods
+kubectl -n olm get pods
 #+END_SRC
 
 You should see output similar to:
 
 #+BEGIN_EXAMPLE
-    NAME                                    READY     STATUS    RESTARTS   AGE
-    alm-operator-8d6dc8b65-8cnrb            1/1       Running   0          1m
-    catalog-operator-f764ff46d-j8msc        1/1       Running   0          1m
-    ...
+NAME                                READY   STATUS    RESTARTS   AGE
+catalog-operator-6b999d5844-smtqg   1/1     Running   0          9m35s
+olm-operator-b757b5f49-j57rs        1/1     Running   0          9m35s
+package-server-88cdfb8f8-w5h6n      1/1     Running   0          9m35s
 #+END_EXAMPLE
 
 *** Deploying etcd operator
@@ -114,23 +113,24 @@ You should see output similar to:
 When Lifecycle Manager Operator is successfully deployed and is managing our cluster we can deploy etcd operator to a newly created etc namespace.
 
 #+BEGIN_SRC sh
-    kubectl create namespace etc
+kubectl create namespace etc
 #+END_SRC
 
-*Note:* If you want to operate on 'etc' namespace you need to pass namespace option to =kubectl= so it will look like =kubectl -n etc get pods=.
+*Note:* If you want to operate on =etc= namespace you need to pass namespace option to =kubectl= so it will look like =kubectl -n etc get pods=.
+*Note:* If you are running on shared cluster, change =etc= namespace to your =<CUSTOM_NAMESPACE>=.
 
-Deploy operator here by applying InstallPlan, this will assure that etcd operator is deployed to our etc namespaces and is watch its crd object.
+Deploy operator here by applying *InstallPlan*, this will assure that etcd operator is deployed to our =etc= namespaces and is watch its crd object.
 
 #+BEGIN_SRC yaml
-    apiVersion: app.coreos.com/v1alpha1
-    kind: InstallPlan-v1
-    metadata:
-      namespace: etc
-      name: etcd
-    spec:
-      clusterServiceVersionNames:
-      - etcdoperator.v0.9.2
-      approval: Automatic
+apiVersion: operators.coreos.com/v1alpha1
+kind: InstallPlan
+metadata:
+  namespace: etc
+  name: etcd
+spec:
+  clusterServiceVersionNames:
+  - etcdoperator.v0.9.2
+  approval: Automatic
 #+END_SRC
 
 Tasks:
@@ -146,14 +146,14 @@ Tasks:
 To install etcd cluster we need to apply following CRD object.
 
 #+BEGIN_SRC yaml
-    apiVersion: "etcd.database.coreos.com/v1beta2"
-    kind: "EtcdCluster"
-    metadata:
-      name: "example-etcd-cluster"
-    spec:
-      size: 3
-      version: "3.2.13"
-      repository: "docker.io/prgcont/etcd"
+apiVersion: "etcd.database.coreos.com/v1beta2"
+kind: "EtcdCluster"
+metadata:
+  name: "example-etcd-cluster"
+spec:
+  size: 3
+  version: "3.2.13"
+  repository: "docker.io/prgcont/etcd"
 #+END_SRC
 
 Verify the state of deployed etcd cluster
@@ -174,22 +174,22 @@ Tasks
 Exec into one etcd pod
 
 #+BEGIN_SRC sh
-    # Get arbitrary pod name using 
-    kubectl -n etc get po -l etcd_cluster=example-etcd-cluster
+# Get arbitrary pod name using 
+kubectl -n etc get po -l etcd_cluster=example-etcd-cluster
 
-    # Exec into etcd pod
-    kubectl -n etc exec -it <POD_NAME> -- sh
+# Exec into etcd pod
+kubectl -n etc exec -it <POD_NAME> -- sh
 
-    # In container:
-    # Update env variable
-    export ETCDCTL_API=3
+# In container:
+# Update env variable
+export ETCDCTL_API=3
 
-    # List etcd members 
-    etcdctl member list
+# List etcd members 
+etcdctl member list
 
-    # Write and read record
-    etcdctl put /here test
-    etcdctl get /here
+# Write and read record
+etcdctl put /here test
+etcdctl get /here
 #+END_SRC
 
 Tasks:
