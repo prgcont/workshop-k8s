@@ -274,7 +274,7 @@ Then we need to run following python code:
 
 *Note:* this a daemon so use =&=, =tmux=, =screen= or another terminal
 
-*Note:* If you are running on shared cluster, update unique CRD Group in python code, e.g. replace =gordons.operator.prgcont.cz=  with =<CUSTOM_NAMESPACE>.prgcont.cz=.
+*Note:* If you are running on shared cluster, update unique CRD Group in python code, e.g. replace =operator.prgcont.cz=  with =<CUSTOM_NAMESPACE>.prgcont.cz=.
 
 #+BEGIN_SRC python
 import threading
