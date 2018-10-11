@@ -33,33 +33,33 @@
 Example:
 
 #+BEGIN_SRC yaml
-    apiVersion: apiextensions.k8s.io/v1beta1
-    kind: CustomResourceDefinition
-    metadata:
-      # name must match the spec fields below, and be in the form: <plural>.<group>
-      name: crontabs.stable.example.com
-    spec:
-      # group name to use for REST API: /apis/<group>/<version>
-      group: stable.example.com
-      # list of versions supported by this CustomResourceDefinition
-      versions:
-        - name: v1
-          # Each version can be enabled/disabled by Served flag.
-          served: true
-          # One and only one version must be marked as the storage version.
-          storage: true
-      # either Namespaced or Cluster
-      scope: Namespaced
-      names:
-        # plural name to be used in the URL: /apis/<group>/<version>/<plural>
-        plural: crontabs
-        # singular name to be used as an alias on the CLI and for display
-        singular: crontab
-        # kind is normally the CamelCased singular type. Your resource manifests use this.
-        kind: CronTab
-        # shortNames allow shorter string to match your resource on the CLI
-        shortNames:
-        - ct
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  # name must match the spec fields below, and be in the form: <plural>.<group>
+  name: crontabs.stable.example.com
+spec:
+  # group name to use for REST API: /apis/<group>/<version>
+  group: stable.example.com
+  # list of versions supported by this CustomResourceDefinition
+  versions:
+    - name: v1
+      # Each version can be enabled/disabled by Served flag.
+      served: true
+      # One and only one version must be marked as the storage version.
+      storage: true
+  # either Namespaced or Cluster
+  scope: Namespaced
+  names:
+    # plural name to be used in the URL: /apis/<group>/<version>/<plural>
+    plural: crontabs
+    # singular name to be used as an alias on the CLI and for display
+    singular: crontab
+    # kind is normally the CamelCased singular type. Your resource manifests use this.
+    kind: CronTab
+    # shortNames allow shorter string to match your resource on the CLI
+    shortNames:
+    - ct
 #+END_SRC
 
 ** Deploy etcd cluster
@@ -212,16 +212,16 @@ This behavior can be changed by passing arg =-cluster-wide= to =etcd-operator= a
 From our example:
 
 #+BEGIN_SRC yaml
-    apiVersion: "etcd.database.coreos.com/v1beta2"
-    kind: "EtcdCluster"
-    metadata:
-      name: "example-etcd-cluster"
-      annotations:
-        etcd.database.coreos.com/scope: clusterwide
-    spec:
-      size: 3
-      version: "3.2.13"
-      repository: "docker.io/prgcont/etcd"
+apiVersion: "etcd.database.coreos.com/v1beta2"
+kind: "EtcdCluster"
+metadata:
+  name: "example-etcd-cluster"
+  annotations:
+    etcd.database.coreos.com/scope: clusterwide
+spec:
+  size: 3
+  version: "3.2.13"
+  repository: "docker.io/prgcont/etcd"
 #+END_SRC
 
 *Note:* You need to update RBAC rules if you want etcd operator to manage resources across all kubernetes cluster.
@@ -432,17 +432,18 @@ subjects:
   namespace: <CUSTOM_NAMESPACE>
 #+END_SRC 
 
-After running the code create gordon cluster by applying following object:
 *Note:* If you are running on shared cluster, update unique CRD Group below, e.g. replace =gordons.operator.prgcont.cz=  with =<CUSTOM_NAMESPACE>.prgcont.cz=.
 
+After running the code create gordon cluster by applying following object:
+
 #+BEGIN_SRC yaml
-    apiVersion: "operator.prgcont.cz/v1"
-    kind: Gordon
-    metadata:
-      name: gordoncluster
-    spec:
-      gordon: 
-        replicas: 3
+apiVersion: "operator.prgcont.cz/v1"
+kind: Gordon
+metadata:
+  name: gordoncluster
+spec:
+  gordon: 
+    replicas: 3
 #+END_SRC
 
 Then you should check that 3 replicas of gordon pods are running via:
