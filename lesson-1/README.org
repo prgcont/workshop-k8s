@@ -17,7 +17,6 @@ help you to run simple stateful applications.
   - [[#scaling-your-application][Scaling Your Application]]
   - [[#persistent-storage][Persistent Storage]]
   - [[#ingress-controller][Ingress Controller]]
-  - [[#defaultbackend][Defaultbackend]]
 
 ** Setup Minikube
 
@@ -410,7 +409,7 @@ You can choose any Ingress controller:
 - it's totally free :)
 - It's the default option for minikube, which we will use to test Ingress behavior in Kubernetes.
 
-** Defaultbackend
+*** Defaultbackend
 
 An Ingress with no rules sends all traffic to a single default backend.
 Traffic is routed to your default backend if none of the Hosts in your Ingress match the Host in the request header, and/or none of the paths match the URL of the request.
