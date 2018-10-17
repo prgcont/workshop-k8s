@@ -8,7 +8,6 @@
   - [[#custom-resource-definition][Custom Resource Definition]]
   - [[#kubernetes-custom-resource-definition][Kubernetes Custom Resource Definition]]
   - [[#deploy-etcd-cluster][Deploy etcd cluster]]
-  - [[#write-simple-dummy-operator-in-python][Write simple dummy Operator in Python]]
   - [[#operator-framework][Operator Framework]]
 
 ** Custom Resource Definition
@@ -20,7 +19,7 @@
 2. Create *EtcdOperator* which reacts to objects on new API Server endpoint.
 3. Create Custom Resource (CR) - unique instance of *EtcdCluster*.
 4. *EtcdOperator* reacts on new object *awesomeETCD* and spawns pods in k8s according to definition in CR.
- 
+
 ** Kubernetes Custom Resource Definition
    :PROPERTIES:
    :CUSTOM_ID: kubernetes-custom-resource-definition
@@ -174,7 +173,7 @@ Tasks
 Exec into one etcd pod
 
 #+BEGIN_SRC sh
-# Get arbitrary pod name using 
+# Get arbitrary pod name using
 kubectl -n etc get po -l etcd_cluster=example-etcd-cluster
 
 # Exec into etcd pod
@@ -184,7 +183,7 @@ kubectl -n etc exec -it <POD_NAME> -- sh
 # Update env variable
 export ETCDCTL_API=3
 
-# List etcd members 
+# List etcd members
 etcdctl member list
 
 # Write and read record
@@ -207,7 +206,7 @@ Tasks:
 
 The above example created =etcd-operator= and etcd Cluster in same namespace (=etc=).
 By default etcd Operator reacts only on =etcdcluster= objects that are in same namespace.
-This behavior can be changed by passing arg =-cluster-wide= to =etcd-operator= and creating =etcdcluster= object with annotation: =etcd.database.coreos.com/scope: clusterwide=. 
+This behavior can be changed by passing arg =-cluster-wide= to =etcd-operator= and creating =etcdcluster= object with annotation: =etcd.database.coreos.com/scope: clusterwide=.
 
 From our example:
 
@@ -226,7 +225,7 @@ spec:
 
 *Note:* You need to update RBAC rules if you want etcd operator to manage resources across all kubernetes cluster.
 
-** Write simple dummy Operator in Python
+** COMMENT Write simple dummy Operator in Python
    :PROPERTIES:
    :CUSTOM_ID: write-simple-dummy-operator-in-python
    :END:
@@ -277,129 +276,131 @@ Then we need to run following python code:
 *Note:* If you are running on shared cluster, update unique CRD Group in python code, e.g. replace =operator.prgcont.cz=  with =<CUSTOM_NAMESPACE>.prgcont.cz=.
 
 #+BEGIN_SRC python
-import threading
-import time
-import yaml
+  import threading
+  import time
+  import yaml
 
 
-from kubernetes import client, config, watch
+  from kubernetes import client, config, watch
 
-# Following line is sourcing your ~/.kube/config so you are authenticated same
-# way as kubectl is
-config.load_kube_config()
-v1 = client.CoreV1Api()
-crds = client.CustomObjectsApi()
-gordon_api_version = 'v1'
-gordon_name = 'gordons'
+  # Following line is sourcing your ~/.kube/config so you are authenticated same
+  # way as kubectl is
+  config.load_kube_config()
+  v1 = client.CoreV1Api()
+  crds = client.CustomObjectsApi()
+  gordon_api_version = 'v1'
+  gordon_name = 'gordons'
 
-crd_group = "operator.prgcont.cz" # group of crd to be vatched
-namespace = config.list_kube_config_contexts()[1]["context"]["namespace"]
-print('Using autodetected namespace: {}').format(namespace)
+  crd_group = "operator.prgcont.cz" # group of crd to be vatched
+  contexts, active_context = config.list_kube_config_contexts()
+  namespace = active_context['context']['namespace'] if  'namespace' in active_context['context'] else 'default'
 
-pod_template = yaml.safe_load("""
-apiVersion: v1
-kind: Pod
-metadata:
-  generateName: gordon-
-spec:
-  containers:
-    - name: gordon
-      image: prgcont/gordon:v1.0
-""")
+  print('Using autodetected namespace: {}').format(namespace)
 
-
-def main():
-    # our simple watch loop for changes in our crd
-    stream = watch.Watch().stream(crds.list_namespaced_custom_object,
-                                  crd_group,
-                                  gordon_api_version,
-                                  namespace,
-                                  gordon_name)
-    for event in stream:
-        if event['type'] == 'ADDED':
-            deploy(event['object'])
-        elif event['type'] == 'MODIFIED':
-            change(event['object'])
-        elif event['type'] == 'DELETED':
-            delete(event['object'])
-        else:
-            print('Unsupported change type: %s' % event['type'])
+  pod_template = yaml.safe_load("""
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    generateName: gordon-
+  spec:
+    containers:
+      - name: gordon
+        image: prgcont/gordon:v1.0
+  """)
 
 
-def deploy(crd):
-    replicas = crd['spec']['gordon']['replicas']
-    name = crd['metadata']['name']
-    if 'state' in crd:
-        print('[%s] Already exists!' % name)
-        return
-    else:
-        crd['state'] = {}
-        crd['state']['pods'] = []
-    print('[%s] Deploying %s replicas of gordon.' %
-          (name,
-           replicas))
-    i = 1
-    while i <= replicas:
-        resp = v1.create_namespaced_pod(namespace, pod_template)
-        crd['state']['pods'].append(resp.metadata.name)
-        print('[%s] Scheduled pod %s' % (name,
-                                         resp.metadata.name))
-        i += 1
-
-    crd['state']['replicas'] = replicas
-    crds.patch_namespaced_custom_object(crd_group,
-                                        gordon_api_version,
-                                        namespace,
-                                        gordon_name,
-                                        name,
-                                        crd)
+  def main():
+      # our simple watch loop for changes in our crd
+      stream = watch.Watch().stream(crds.list_namespaced_custom_object,
+                                    crd_group,
+                                    gordon_api_version,
+                                    namespace,
+                                    gordon_name)
+      for event in stream:
+          if event['type'] == 'ADDED':
+              deploy(event['object'])
+          elif event['type'] == 'MODIFIED':
+              change(event['object'])
+          elif event['type'] == 'DELETED':
+              delete(event['object'])
+          else:
+              print('Unsupported change type: %s' % event['type'])
 
 
-def change(crd):
-    replicas = crd['spec']['gordon']['replicas']
-    name = crd['metadata']['name']
-    print('[%s] Modifying.' % name)
-    i = crd['state']['replicas']
-    if i > replicas:
-        while i > replicas:
-            pod = crd['state']['pods'].pop()
-            print('[%s] Removing pod %s .' % (name, pod))
-            v1.delete_namespaced_pod(pod,
-                                     namespace,
-                                     client.V1DeleteOptions())
-            i -= 1
-    elif i < replicas:
-        while i <= replicas:
-            resp = v1.create_namespaced_pod(namespace, pod_template)
-            crd['state']['pods'].append(resp.metadata.name)
-            print('[%s] Scheduled pod %s' % (name,
-                                             resp.metadata.name))
-            i += 1
-    crd['state']['replicas'] = i
-    crds.patch_namespaced_custom_object(crd_group,
-                                        gordon_api_version,
-                                        namespace,
-                                        gordon_name,
-                                        name,
-                                        crd)
+  def deploy(crd):
+      replicas = crd['spec']['gordon']['replicas']
+      name = crd['metadata']['name']
+      if 'state' in crd:
+          print('[%s] Already exists!' % name)
+          return
+      else:
+          crd['state'] = {}
+          crd['state']['pods'] = []
+      print('[%s] Deploying %s replicas of gordon.' %
+            (name,
+             replicas))
+      i = 1
+      while i <= replicas:
+          resp = v1.create_namespaced_pod(namespace, pod_template)
+          crd['state']['pods'].append(resp.metadata.name)
+          print('[%s] Scheduled pod %s' % (name,
+                                           resp.metadata.name))
+          i += 1
+
+      crd['state']['replicas'] = replicas
+      crds.patch_namespaced_custom_object(crd_group,
+                                          gordon_api_version,
+                                          namespace,
+                                          gordon_name,
+                                          name,
+                                          crd)
 
 
-def delete(crd):
-    pass
+  def change(crd):
+      replicas = crd['spec']['gordon']['replicas']
+      name = crd['metadata']['name']
+      print('[%s] Modifying.' % name)
+      i = crd['state']['replicas']
+      if i > replicas:
+          while i > replicas:
+              pod = crd['state']['pods'].pop()
+              print('[%s] Removing pod %s .' % (name, pod))
+              v1.delete_namespaced_pod(pod,
+                                       namespace,
+                                       client.V1DeleteOptions())
+              i -= 1
+      elif i < replicas:
+          while i <= replicas:
+              resp = v1.create_namespaced_pod(namespace, pod_template)
+              crd['state']['pods'].append(resp.metadata.name)
+              print('[%s] Scheduled pod %s' % (name,
+                                               resp.metadata.name))
+              i += 1
+      crd['state']['replicas'] = i
+      crds.patch_namespaced_custom_object(crd_group,
+                                          gordon_api_version,
+                                          namespace,
+                                          gordon_name,
+                                          name,
+                                          crd)
 
 
-class Checker(threading.Thread):
-
-    def run(self):
-        while True:
-            time.sleep(1)
+  def delete(crd):
+      pass
 
 
-if __name__ == "__main__":
-    checker = Checker()
-    checker.daemon = True
-    checker.start()
-    main()
+  class Checker(threading.Thread):
+
+      def run(self):
+          while True:
+              time.sleep(1)
+
+
+  if __name__ == "__main__":
+      checker = Checker()
+      checker.daemon = True
+      checker.start()
+      main()
 #+END_SRC
 
 *Note*: If running in shared cluster (e.g. on Digital Ocean), then RBAC rules to operate with newly created object have to be created. Apply Below RBAC Role and RoleBinding:
@@ -430,7 +431,7 @@ subjects:
 - kind: ServiceAccount
   name: <CUSTOM_NAMESPACE>
   namespace: <CUSTOM_NAMESPACE>
-#+END_SRC 
+#+END_SRC
 
 *Note:* If you are running on shared cluster, update unique CRD Group below, e.g. replace =gordons.operator.prgcont.cz=  with =<CUSTOM_NAMESPACE>.prgcont.cz=.
 
@@ -442,7 +443,7 @@ kind: Gordon
 metadata:
   name: gordoncluster
 spec:
-  gordon: 
+  gordon:
     replicas: 3
 #+END_SRC
 
