@@ -1,0 +1,257 @@
+* Istio - first voyage
+
+
+The purpose of this workshop is to bootstrap you into the world
+of service meshes and Istio.
+
+** Topics                                                              :TOC_2_gh:
+- [[#istio---first-voyage][Istio - first voyage]]
+  - [[#first-steps][First steps]]
+  - [[#deploying-and-observing-first-app][Deploying and observing first app]]
+  - [[#trafic-routing][Trafic routing]]
+
+** First steps
+*** Install istioctl
+
+The very first steps is to install istioctl. We provide steps for linux,
+if you are on another operating system use the most preferred way of installing
+=istioctl= from [[https://github.com/istio/istio/releases][Istio releases]].
+
+#+BEGIN_SRC sh
+cd /tmp
+wget https://github.com/istio/istio/releases/download/1.0.3/istio-1.0.3-linux.tar.gz
+tar -xf istio-1.0.3-linux.tar.gz
+cp istop-1.0.3/bin/istioctl /usr/local/bin
+
+#+END_SRC
+
+*** Examining cluster
+Istio is installed in =istio-system= name space. You can see all comsponents via
+#+BEGIN_SRC sh
+kubectl -n istio-system get pods 
+#+END_SRC
+
+Tasks:
++ Find out purpose of each of these pods. You can use
+  https://istio.io/docs/concepts/what-is-istio/#architecture as an reference.
+
+
+** Deploying and observing first app
+Not its time to se some real Istio offering!
+
+*** Deploying bookinfo
+At first we will deploy bookinfo application from Istio samples. You can find details 
+about it at [[https://istio.io/docs/examples/bookinfo/][it's page.]]
+
+#+BEGIN_SRC sh
+kubectl apply -f <(istioctl kube-inject -f samples/bookinfo/platform/kube/bookinfo.yaml)
+#+END_SRC
+
+As you probably noticed the command is a little bit weird. There is =istioctl kube-inject= 
+sub-command which is responsible for altering your Kubernetes object and injecting Istio
+sidecars.
+
+You can see that sidecar is running inside our pods by running command similar to:
+#+BEGIN_SRC sh
+kubectl -n <NAMESPACE> get pod productpage-v1-596544856c-bcp5w -o=jsonpath="{..image}"
+#+END_SRC
+
+Now we've deployed the Bookinfo application. For our application to be reachable via Istio
+ ingress which is independent of Kubernetes ingress introduced earlier we need to 
+deploy following objects:
+
+#+BEGIN_SRC yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: <NAMESPACE>-gateway
+spec:
+  selector:
+    istio: ingressgateway # use istio default controller
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "<NAMESPACE>.istio.prgcont.cz"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: bookinfo
+spec:
+  hosts:
+  - "<NAMESPACE>.istio.prgcont.cz"
+  gateways:
+  - <NAMESPACE>-gateway
+  http:
+  - match:
+    - uri:
+        exact: /productpage
+    - uri:
+        exact: /login
+    - uri:
+        exact: /logout
+    - uri:
+        prefix: /api/v1/products
+    route:
+    - destination:
+        host: productpage
+        port:
+          number: 9080
+#+END_SRC
+
+No we can  visit our bookinfo application via =<NAMESPACE>.istio.prgcont.cz=.
+And we can hit[[http://kiali.prgcont.cz][ Kiali]] and login with *admin/admin* and see how our bookinfo application
+traffic is routed.
+
+
+Tasks:
++ Examine Kiali console and service graphs
++ Find istio Gateway and VirtualService definition in the Kiali console
+
+** Trafic routing
+
+Before we can start with managing our traffic we need to create destination rules
+for all of our services via
+
+#+BEGIN_SRC sh
+kubectl -n <NAMESPACE> apply -f samples/bookinfo/networking/destination-rule-all.yaml 
+
+#+END_SRC
+
+*** Basic routing
+Now we can start mess with routing, we will send all of our traffic to a *v3* 
+version of reviews service by creating following virtual service
+
+
+#+BEGIN_SRC yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: reviews
+spec:
+  hosts:
+    - reviews
+  http:
+  - route:
+    - destination:
+        host: reviews
+        subset: v1
+#+END_SRC
+
+Tasks:
++ Change VirtualService to point to v3 of review service
++ Access your application via browser and show that is properly routed
++ Show in Kiali that traffic is routed to proper service
+
+
+
+*** Load Balancing
+We will now go though more advanced scenario. We will try to load balance our service.
+We will try to shift 20% of our request to reviews v1 and 80% to reviews v3.
+We can achieve this by creating following VirtualService:
+
+#+BEGIN_SRC 
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: reviews
+spec:
+  hosts:
+    - reviews
+  http:
+  - route:
+    - destination:
+        host: reviews
+        subset: v1
+      weight: 20
+    - destination:
+        host: reviews
+        subset: v3
+      weight: 80
+#+END_SRC
+
+Now if we try to access our application we should se mostly v3 version of review
+service.
+
+
+*** Intelligent routing
+In Istio we can even do some intelligent routing based on headers. We will
+change our application routing in a way, that <NAMESPACE> user will get *v3* version
+of review service and rest of our audience will hit *v1* service.
+
+Apply following CRD to Kuberentes cluster:
+#+BEGIN_SRC yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: reviews
+spec:
+  hosts:
+  - reviews
+  http:
+  - match:
+    - headers:
+        end-user:
+          exact: <NAMESPACE>
+    route:
+    - destination:
+        host: reviews
+        subset: v3
+  - route:
+    - destination:
+        host: reviews
+        subset: v1
+#+END_SRC
+
+Tasks
++ Add v2 service routing for user *foo*
++ Show different traffic routes in Kiali
++ Show all the VirtualService in Kiali
+
+
+*** Faults & Tracing
+Now we will try to break our application by injecting a fault. In this
+way we will inject 10 seconds delay so our ratings service will timeout.
+
+Apply following CRD to Kuberentes cluster:
+#+BEGIN_SRC 
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: ratings
+spec:
+  hosts:
+  - ratings
+  http:
+  - fault:
+      delay:
+        fixedDelay: 10s
+        percent: 100
+    match:
+    - headers:
+        end-user:
+          exact: <NAMESPACE>
+    route:
+    - destination:
+        host: ratings
+        subset: v1
+  - route:
+    - destination:
+        host: ratings
+        subset: v1
+#+END_SRC
+
+Now you can show, that our service is working only if you are not logged in as a <NAMESPACE> user. 
+Noe change delay to 1 second only and execute following command be able to access Jaeger.
+
+#+BEGIN_SRC sh
+kubectl port-forward -n istio-system $(kubectl get pod -n istio-system -l app=jaeger -o jsonpath='{.items[0].metadata.name}') 16686:16686
+#+END_SRC
+
+Now we can access Jaeger via [[http://localhost:16686][localhost:16686]]. Then you can filter all transaction longer then
+1s and you should see transaction with your fault.
+
+Then you can use Kiali again and you should see service with big warning about error rates.
