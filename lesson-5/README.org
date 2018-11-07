@@ -11,6 +11,9 @@ of service meshes and Istio.
   - [[#trafic-routing][Trafic routing]]
 
 ** First steps
+Before starting this workshop please replace <NAMESPACE> with a name of
+Kubernetes namespace you are actually using.
+
 *** Install istioctl
 
 The very first steps is to install istioctl. We provide steps for linux,
@@ -21,8 +24,15 @@ if you are on another operating system use the most preferred way of installing
 cd /tmp
 wget https://github.com/istio/istio/releases/download/1.0.3/istio-1.0.3-linux.tar.gz
 tar -xf istio-1.0.3-linux.tar.gz
-cp istop-1.0.3/bin/istioctl /usr/local/bin
+cp istio-1.0.3/bin/istioctl /usr/local/bin
 
+#+END_SRC
+
+After downloading the istio distribution please enter its directory, as we expect your
+CWD to be inside it.
+
+#+BEGIN_SRC sh
+cd istio-1.0.3
 #+END_SRC
 
 *** Examining cluster
@@ -122,7 +132,7 @@ kubectl -n <NAMESPACE> apply -f samples/bookinfo/networking/destination-rule-all
 #+END_SRC
 
 *** Basic routing
-Now we can start mess with routing, we will send all of our traffic to a *v3* 
+Now we can start messing with routing, we will send all of our traffic to a *v3* 
 version of reviews service by creating following virtual service
 
 
