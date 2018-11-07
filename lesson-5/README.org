@@ -112,7 +112,7 @@ spec:
           number: 9080
 #+END_SRC
 
-No we can  visit our bookinfo application via =<NAMESPACE>.istio.prgcont.cz=.
+No we can  visit our bookinfo application via =<NAMESPACE>.istio.prgcont.cz/productpage=.
 And we can hit[[http://kiali.prgcont.cz][ Kiali]] and login with *admin/admin* and see how our bookinfo application
 traffic is routed.
 
