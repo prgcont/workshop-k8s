@@ -54,7 +54,7 @@ At first we will deploy bookinfo application from Istio samples. You can find de
 about it at [[https://istio.io/docs/examples/bookinfo/][it's page.]]
 
 #+BEGIN_SRC sh
-kubectl apply -f <(istioctl kube-inject -f samples/bookinfo/platform/kube/bookinfo.yaml)
+kubectl -n <NAMESPACE> apply -f <(istioctl kube-inject -f samples/bookinfo/platform/kube/bookinfo.yaml)
 #+END_SRC
 
 As you probably noticed the command is a little bit weird. There is =istioctl kube-inject= 
