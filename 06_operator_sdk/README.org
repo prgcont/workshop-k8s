@@ -1,0 +1,46 @@
+* Operator SDK
+
+This tutorial demonstrates simple operator-sdk workflow and examines Reconcile loop which will typical Operator developer deal with.
+
+Official [[https://github.com/operator-framework/operator-sdk][Operator SDK repository]].
+
+** Operator SDK tutorial
+
+Check [[./prerequisites_operator_sdk.org][operator-sdk prerequisites]] doc before starting this tutorial.
+
+Create minimal Operator in ~GOPATH~:
+
+#+begin_src bash
+mkdir -p $GOPATH/github.com/prgcont/
+cd $GOPATH/github.com/prgcont/
+operator-sdk new workshop-operator
+#+end_src
+
+Add API to generated Operator:
+#+begin_src bash
+operator-sdk add api --api-version=workshopapp.operator.prgcont.cz/v1alpha1 --kind=WorkshopApp
+#+end_src
+Check which files were added or updated.
+
+Add Controller to generated Operator:
+#+begin_src bash
+operator-sdk add controller --api-version=workshopapp.operator.prgcont.cz/v1alpha1 --kind=WorkshopApp
+#+end_src
+Check which files were added or updated.
+
+Build and run operator locally:
+#+begin_src bash
+# Create CRD
+kubectl create -f ./deploy/crds/workshopapp_v1alpha1_workshopapp_crd.yaml
+
+go build ./cmd/manager
+WATCH_NAMESPACE=default ./manager
+
+# Create instance of app
+kubectl create -f ./deploy/crds/workshopapp_v1alpha1_workshopapp_cr.yaml
+#+end_src
+
+Tasks:
+- delete the pod, observe what happened and explain it
+  - hint: check Reconcile method in ~pkg/controller/workshopapp/workshopapp_controller.go~ file.
+- Stop Operator and delete CR, observe if Pod was deleted and explain why.

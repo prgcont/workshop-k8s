@@ -11,6 +11,7 @@
   - [[#operator-framework][Operator Framework]]
 
 ** Custom Resource Definition
+
 #+CAPTION: Simple overview of adding Kuberentes Operator to cluster
 #+NAME:   fig: k8s_operator
 [[./pic/kubernetes_operators.jpg]]
@@ -480,4 +481,4 @@ Operator SDK helps you a lot with:
 
 Advance task:
 
-- Try to follow the [[https://github.com/operator-framework/getting-started][tutorial]]
+- Try to follow the [[../06_operator_sdk/README.org][operator-sdk tutorial]]

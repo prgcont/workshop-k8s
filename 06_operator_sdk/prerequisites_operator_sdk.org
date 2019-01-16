@@ -1,0 +1,7 @@
+* Prerequisites for operator-sdk tutorial
+
+- working [[https://golang.org/doc/install][go environment]]
+- Installed binaries:
+  - [[https://github.com/operator-framework/operator-sdk/releases/tag/v0.3.0][operator-sdk v0.3.0]]
+  - [[https://github.com/kubernetes/kubernetes/releases/tag/v1.12.4][kubectl 1.12.4]]
+- [[https://github.com/kubernetes/minikube/releases/tag/v0.32.0][minikube v0.32.0]] (Optional for meetup sessions where kubernetes cluster is provided)
