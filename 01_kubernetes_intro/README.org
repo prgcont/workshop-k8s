@@ -233,7 +233,7 @@ $  kubectl describe deployment hello
 #+END_SRC
 
 By examining the whole output of the previous command, you can see a Pod template with our container image, and the most important part for us is the line with the word =Replicas=.
-This tells Kubernetes how many instances of our application we want to have. 
+This tells Kubernetes how many instances of our application we want to have.
 We can scale our deployment by executing
 
 #+BEGIN_SRC sh
@@ -241,7 +241,7 @@ $ kubectl scale --replicas=3 deployment/hello
 #+END_SRC
 
 This will ask Kubernetes to scale up the deployment of our application to 3 instances.
-The number of instances is guarded by =ReplicaSet=. 
+The number of instances is guarded by =ReplicaSet=.
 You can list and describe ReplicaSets by following commands (replace ... by name of your ReplicaSet):
 
 #+BEGIN_SRC sh
