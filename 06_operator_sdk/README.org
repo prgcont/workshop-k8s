@@ -16,7 +16,7 @@ cd $GOPATH/github.com/prgcont/
 operator-sdk new workshop-operator
 #+end_src
 
-Add API to generated Operator:
+Add API to generated Operator(shall be executed inside *workshop-operator* directory):
 #+begin_src bash
 operator-sdk add api --api-version=workshopapp.operator.prgcont.cz/v1alpha1 --kind=WorkshopApp
 #+end_src
