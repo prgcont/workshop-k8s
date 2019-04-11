@@ -1,0 +1,36 @@
+* Ansible Operator workshop
+** Prerequisites
+
+- Download ansible role
+  - ~git clone git@github.com:prgcont/ansible-nextcloud.git roles/nextcloud~
+
+** Set up infrastructure for demo
+
+Create Centos 7 instance on Digital Ocean:
+
+#+begin_src bash 
+doctl compute droplet create nextcloud --size 2gb --image centos-7-x64 --region ams3 --ssh-keys <YOUR_KEYS>
+#+end_src
+
+Setup ansible hosts file 
+
+#+begin_src bash
+NODES=$(doctl compute droplet list | grep nextcloud | awk '{print $2" ansible_host="$3}')
+echo -e "[nextcloud]\n$NODES \n\n[all:vars]\nansible_user=root" > hosts
+#+end_src
+
+** Create Nextcloud on node
+
+Official [[https://docs.nextcloud.com/server/13/admin_manual/installation/index.html][Nextcloud documentation]]
+
+#+begin_src bash 
+ansible-playbook -i hosts nextcloud.yml
+#+end_src
+
+Customize options such as username/password domain in ~nextcloud.yml~ according to [[https://github.com/prgcont/ansible-nextcloud#role-variables][role variables documentation]].
+
+** Cleanup 
+
+#+begin_src bash
+doctl compute droplet delete nextcloud 
+#+end_src
