@@ -13,7 +13,7 @@ community.
 
 *** Kubernetes 101
 
-[[./01_kubernetes_intro/][01_kubernetes_intro]] Introduction of kubernetes concepts:
+[[01_kubernetes_intro]] Introduction of kubernetes concepts:
 
   - starting kubernetes cluster in minikube
   - running first application
@@ -22,31 +22,31 @@ community.
 
 *** K8S Scheduling
 
-[[./02_kubernetes_scheduling/][02_kubernetes_scheduling]] Writing and using custom
+[[02_kubernetes_scheduling]] Writing and using custom
   kubernetes scheduler.
 
 *** K8S Operators
 
-[[./03_kubernetes_operators/][03_kubernetes_operators]] Extending kubernetes
+[[03_kubernetes_operators]] Extending kubernetes
   functionality using Custom Resource Definitions (CRD) and kubernetes
   operators.
 
 *** Monitoring K8S
 
-[[./04_kubernetes_monitoring/][04_kubernetes_monitoring]] Using Prometheus to monitor
+[[04_kubernetes_monitoring]] Using Prometheus to monitor
   kubernetes ecosystem and applications running on it.
 
 *** Istio K8S ingres
 
-[[./05_istio_on_kubernetes][05_istio_on_kubernetes]] Using Istio service mesh on Kubernetes.
+[[05_istio_on_kubernetes]] Using Istio service mesh on Kubernetes.
 
 *** Operator SDK
 
-[[./06_operator_sdk][06_operator_sdk]]
+[[06_operator_sdk]]
 
 *** Ansible Operator
 
-[[./07_ansible_operator][07_ansible_operator]]
+[[07_ansible_operator]]
 
 *** Ansible Operator for K8S
 
