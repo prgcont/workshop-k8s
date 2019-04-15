@@ -16,7 +16,9 @@
 Create Centos 7 instance on Digital Ocean:
 
 #+begin_src bash 
-doctl compute droplet create nextcloud --size 2gb --image centos-7-x64 --region ams3 --ssh-keys <YOUR_KEYS>
+doctl compute droplet create nextcloud \
+   --size 2gb --image centos-7-x64 \
+   --region ams3 --ssh-keys <YOUR_KEYS>
 #+end_src
 
 Setup Ansible inventory: 
@@ -51,7 +53,9 @@ images if they're good enough to be used in our environment.
 Now its time to jump into operator waters. We will generate our NextCloud Ansible operator
 directory structure by executing:
 #+BEGIN_SRC bash
-operator-sdk new nextcloud --type ansible --kind Nextcloud --api-version cz.prgcont/v1alpha1 --skip-git-init
+operator-sdk new nextcloud \
+   --type ansible --kind Nextcloud \
+   --api-version cz.prgcont/v1alpha1 --skip-git-init
 #+END_SRC
 
 This should end up with a directory structure like:
@@ -171,7 +175,7 @@ To be able to deploy our Nextcloud instance on Kubernetes we need to define a th
 - Service
 - Ingress
 
-To define deployment we create a j2 template in *nextcloud/roles/nextcloud/templates/demployment.yaml.j2*
+To define deployment we *create* a j2 template in ~nextcloud/roles/nextcloud/templates/demployment.yaml.j2~
 to contain:
 #+BEGIN_SRC jinja2 :tangle nextcloud/roles/nextcloud/templates/deployment.yaml.j2
 apiVersion: apps/v1
@@ -197,7 +201,7 @@ spec:
 #+END_SRC
 
 
-Service template will be placed in *nextcloud/roles/nextcloud/templates/service.yaml.j2* and contains:
+New file a j2 service template will be created in ~nextcloud/roles/nextcloud/templates/service.yaml.j2~ and contains:
 #+BEGIN_SRC jinja2 :tangle nextcloud/roles/nextcloud/templates/service.yaml.j2
 apiVersion: v1
 kind: Service
@@ -213,7 +217,7 @@ spec:
 #+END_SRC
 
 
-And Ingress template will be *nextcloud/roles/nextcloud/templates/ingerss.yaml.j2* containing:
+And last an ingress j2 template will be created as ~nextcloud/roles/nextcloud/templates/ingress.yaml.j2~ containing:
 #+BEGIN_SRC jinja2 :tangle nextcloud/roles/nextcloud/templates/ingress.yaml.j2
 apiVersion: extensions/v1beta1
 kind: Ingress
@@ -252,7 +256,7 @@ operator-sdk up local
 #+END_SRC
 
 *Pro-tip:* you can access Ansible logs via 
-*/tmp/ansible-operator/runner/cz.prgcont/v1alpha1/Nextcloud/default/example-nextcloud/artifacts/latest/stdout*.
+~/tmp/ansible-operator/runner/cz.prgcont/v1alpha1/Nextcloud/default/example-nextcloud/artifacts/latest/stdout~.
 
 Now it's time to check our Kubernetes cluster. You should get output similar to this:
 #+BEGIN_SRC bash
