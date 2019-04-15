@@ -1,0 +1,3 @@
+- hosts: nextcloud
+  roles:
+      - { role: nextcloud, nextcloud_domain: nextcloud.prgcont.cz }
