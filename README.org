@@ -11,21 +11,46 @@ community.
    :CUSTOM_ID: exercises
    :END:
 
-- [[./01_kubernetes_intro/][Kubernetes 101]] Introduction of kubernetes concepts:
+*** Kubernetes 101
+
+[[./01_kubernetes_intro/][01_kubernetes_intro]] Introduction of kubernetes concepts:
 
   - starting kubernetes cluster in minikube
   - running first application
   - persistent storage intro
   - kubernetes ingress (exposing application)
 
-- [[./02_kubernetes_scheduling/][Kubernetes Scheduling]] Writing and using custom
+*** K8S Scheduling
+
+[[./02_kubernetes_scheduling/][02_kubernetes_scheduling]] Writing and using custom
   kubernetes scheduler.
-- [[./03_kubernetes_operators/][Kubernetes Operators]] Extending kubernetes
+
+*** K8S Operators
+
+[[./03_kubernetes_operators/][03_kubernetes_operators]] Extending kubernetes
   functionality using Custom Resource Definitions (CRD) and kubernetes
   operators.
-- [[./04_kubernetes_monitoring/][Monitoring on Kubernetes]] Using Prometheus to monitor
+
+*** Monitoring K8S
+
+[[./04_kubernetes_monitoring/][04_kubernetes_monitoring]] Using Prometheus to monitor
   kubernetes ecosystem and applications running on it.
-- [[./05_istio_on_kubernetes][Istio on Kubernetes]] Using Istio service mesh on Kubernetes.
+
+*** Istio K8S ingres
+
+[[./05_istio_on_kubernetes][05_istio_on_kubernetes]] Using Istio service mesh on Kubernetes.
+
+*** Operator SDK
+
+[[./06_operator_sdk][06_operator_sdk]]
+
+*** Ansible Operator
+
+[[./07_ansible_operator][07_ansible_operator]]
+
+*** Ansible Operator for K8S
+
+
 
 ** License
    :PROPERTIES:
