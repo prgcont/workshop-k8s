@@ -105,9 +105,16 @@ nextcloud/
 └── watches.yaml
 #+END_SRC
 
-The most important file for us is *watches.yaml*. It defines mapping between CR and Ansible Role. 
-This means that every time there is a change in a watched Kubernetes object the Ansible role specified 
-in *watches.yaml* file will be executed.
+The most important file for us is *watches.yaml*. It might look like this:
+#+BEGIN_SRC yaml :tangle  nextcloud/watches.yaml
+---
+- version: v1alpha1
+  group: cz.prgcont
+  kind: Nextcloud
+  role: /opt/ansible/roles/Nextcloud
+#+END_SRC
+
+It defines mapping between CR and Ansible Role. This means that every time there is a change in a watched Kubernetes object the Ansible role specified in *watches.yaml* file will be executed.
 
 *Note:* As you see your role is executed frequently so it really must be idempotent.
 
