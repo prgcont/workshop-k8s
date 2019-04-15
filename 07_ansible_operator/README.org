@@ -321,7 +321,9 @@ and we will ask it to setup DB for us.
 
 First we will give full admin right for svc account in kube-system namespace
 #+BEGIN_SRC bash
-kubectl create clusterrolebinding add-on-cluster-admin   --clusterrole=cluster-admin   --serviceaccount=kube-system:default
+kubectl create clusterrolebinding add-on-cluster-admin \
+  --clusterrole=cluster-admin \
+  --serviceaccount=kube-system:default
 #+END_SRC
 
 And we can deploy operator via helm:
