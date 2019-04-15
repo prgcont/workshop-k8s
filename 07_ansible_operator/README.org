@@ -116,7 +116,7 @@ The most important file for us is *watches.yaml*. It might look like this:
 
 It defines mapping between CR and Ansible Role. This means that every time there is a change in a watched Kubernetes object the Ansible role specified in *watches.yaml* file will be executed.
 
-*Note:* As you see your role is executed frequently so it really must be idempotent.
+*Note:* As you see your role is executed frequently so it really must be [[https://ryaneschinger.com/blog/ensuring-command-module-task-is-repeatable-with-ansible/][idempotent]].
 
 For more real world style operators please also read about [[https://github.com/operator-framework/operator-sdk/blob/master/doc/ansible/dev/finalizers.md][finalizers]], which enables you to clear
 all resources which are not stored in Kubernetes.
