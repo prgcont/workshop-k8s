@@ -48,10 +48,6 @@ community.
 
 [[07_ansible_operator]]
 
-*** Ansible Operator for K8S
-
-
-
 ** License
    :PROPERTIES:
    :CUSTOM_ID: license
